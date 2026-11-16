@@ -1,4 +1,4 @@
-# ADR-0002: Java 21 + Spring Boot, with plain SQL
+# ADR-0002: Java 21 + Spring Boot 4.1, Maven, plain SQL, k6
 
 - **Status:** accepted
 - **Date:** 2026-11-16
@@ -6,32 +6,32 @@
 
 ## Context
 
-Step 2 needs an app. The lab is about concurrency on a hot row, so the code must make the
-SQL and the transaction boundaries visible, and must be able to simulate hundreds to
-thousands of concurrent buyers.
+Step 2 needs an app. The lab is about concurrency on a hot row, so the code must keep the
+SQL and the transaction boundaries visible, and we must be able to fire hundreds to
+thousands of concurrent buyers at it.
 
 ## Options
 
 | Choice | Picked | Why / why not the others |
 | --- | --- | --- |
-| Language | **Java 21 (LTS)** | Your choice. **Virtual threads** make 10,000 concurrent simulated buyers cheap. |
-| Framework | **Spring Boot 3** (Web, JDBC, Validation, Actuator) | Your choice. Mainstream, and `@Transactional` makes transaction boundaries explicit. |
-| Data access | **`JdbcClient` / `JdbcTemplate` with hand-written SQL** | JPA/Hibernate hides the SQL and adds its own locking and caching, which would hide exactly what we're studying. JPA's `@Version` OCC can still be shown side by side in step 4 if useful. |
-| Migrations | **Flyway** | Plain `.sql` files that are easy to read; each step adds its columns with a new migration. |
-| Build | **Gradle (Kotlin DSL) with wrapper** | Short build file. Maven would also be fine. |
-| Redis client (step 5+) | **Spring Data Redis (Lettuce)** | Supports `SET NX EX`, sorted sets and Lua scripts. |
-| Tests | **JUnit 5 + Testcontainers** (Postgres, Redis) | Tests hit a real Postgres, so concurrency results are real, not mocked. |
-| Load scripts | **A small Java runner on virtual threads** (`loadtest` module/task) | No extra tool to install; it prints the result table straight into step notes. k6 is an option for the HTTP-level spike in step 6. |
-| Infra | **Docker Compose** (Postgres 16, Redis 7) | As planned in ADR-0001. |
+| Language | **Java 21 (LTS)** | Daewon's choice. |
+| Framework | **Spring Boot 4.1.x**, Spring MVC | Daewon's choice. `@Transactional` makes transaction boundaries explicit. |
+| Build | **Maven** (with wrapper) | Daewon's choice (an earlier draft said Gradle). |
+| Data access | **`JdbcClient`, hand-written SQL** | JPA/Hibernate hides the SQL and adds its own locking and caching: the very thing we study. |
+| Migrations | **Flyway** | Plain `.sql` files; each step adds its columns in a new migration. |
+| Redis (step 5+) | **Spring Data Redis** | Supports `SET NX EX`, sorted sets, Lua. |
+| Tests | **JUnit 5 + Testcontainers** | Real Postgres, so concurrency results are real. |
+| Load tests | **k6** (from step 3), run in Docker | Real HTTP load with a summary of p95 and error counts; nothing to install. (An earlier draft used a Java runner.) |
+| Infra | **Docker Compose** (Postgres, Redis) | As planned in ADR-0001. |
 
 ## Decision
 
-Java 21 + Spring Boot 3, plain SQL with `JdbcClient`, Flyway, Gradle, Testcontainers, and a
-virtual-thread load runner.
+Java 21 + Spring Boot 4.1.x + Maven, `JdbcClient` with plain SQL, Flyway, JUnit 5 +
+Testcontainers, k6, Docker Compose.
 
 ## Consequences
 
-- The SQL in each step's code is exactly the SQL in the design docs. That makes them easy to
-  compare.
-- Step 4's three fixes are three short repository methods, not three frameworks.
-- No ORM conveniences; we write the row mapping. That's fine at this size.
+- The SQL in each step's code is the SQL in the design docs. That makes them easy to compare.
+- Step 4's three fixes are three short repository methods.
+- k6 tests through HTTP, so numbers include the web layer, which is closer to real life.
+  Testcontainers tests check the invariant without HTTP.

@@ -5,7 +5,7 @@ own words from the source. In the lab we **run** them, not just discuss them.
 
 ---
 
-## §1 No double booking under contention (steps 3–4)
+## section 1 No double booking under contention (steps 3-4)
 
 **Problem.** Two buyers read "seat 12 is available" at the same moment, and both write
 "sold". This is a read-check-write race.
@@ -14,21 +14,21 @@ own words from the source. In the lab we **run** them, not just discuss them.
 
 | Option | Idea | Trade-off |
 | --- | --- | --- |
-| Pessimistic row lock | `SELECT … FOR UPDATE` then update, in one *short* transaction | Simple and correct; buyers queue on hot rows |
-| Optimistic concurrency (OCC) | `UPDATE … WHERE id=? AND version=?`; retry or fail on 0 rows | No waiting; many failures when contention is high |
+| Pessimistic row lock | `SELECT ... FOR UPDATE` then update, in one *short* transaction | Simple and correct; buyers queue on hot rows |
+| Optimistic concurrency (OCC) | `UPDATE ... WHERE id=? AND version=?`; retry or fail on 0 rows | No waiting; many failures when contention is high |
 | Atomic conditional update | `UPDATE tickets SET status='booked' WHERE id=? AND status='available'` and check the row count | Smallest; the database does the check-and-set in one statement |
 
 Isolation level matters too. Also try running the naive version under `SERIALIZABLE`.
 
 This database-level guard stays in place in every later step. Even when Redis holds the seat
-(§2), the final write to `booked` must still be protected by one of these.
+(section 2), the final write to `booked` must still be protected by one of these.
 
 **Measure:** sold count (must equal the number of tickets), rejected count, throughput,
 p50/p95 latency.
 
 ---
 
-## §2 Reserving tickets during checkout (step 5)
+## section 2 Reserving tickets during checkout (step 5)
 
 **Problem.** No one should spend 5 minutes on a payment form and then lose the seat. We need
 three things:
@@ -38,7 +38,7 @@ three things:
 
 ### Bad: a long-running DB lock ("interactive transaction")
 
-`SELECT … FOR UPDATE` and keep the transaction open while the user types their card.
+`SELECT ... FOR UPDATE` and keep the transaction open while the user types their card.
 
 - Database locks are meant for near-instant transactions. Holding one for minutes ties up
   connections and raises the risk of contention and deadlocks.
@@ -50,7 +50,7 @@ three things:
 
 ### Good: status + `reserved_until`, released by a cron job
 
-Ticket states `available → reserved → booked`. Reserving sets `status='reserved'` and an
+Ticket states `available -> reserved -> booked`. Reserving sets `status='reserved'` and an
 expiry time. A cron job periodically sets expired holds back to `available`.
 
 - **Lag:** a seat stays "reserved" after its hold ends until the next cron run. That's bad
@@ -68,7 +68,7 @@ UPDATE tickets
    SET status = 'reserved', reserved_until = now() + interval '10 minutes', booking_id = $1
  WHERE id = $2
    AND (status = 'available' OR (status = 'reserved' AND reserved_until < now()));
--- 1 row → you hold it; 0 rows → someone else does
+-- 1 row -> you hold it; 0 rows -> someone else does
 ```
 
 - Only one buyer can win, and an expired hold can be claimed right away. No cron is needed
@@ -80,7 +80,7 @@ UPDATE tickets
 
 ### Great: Redis lock with TTL (the design's pick)
 
-`SET ticket:{ticketId} {userId} NX EX 600`. `SET … NX` is atomic, so only one client gets
+`SET ticket:{ticketId} {userId} NX EX 600`. `SET ... NX` is atomic, so only one client gets
 the key.
 
 - **Why Redis when Postgres is already consistent?** Postgres has no per-row TTL. Redis
@@ -99,19 +99,19 @@ Challenges to handle:
 | Challenge | What to do |
 | --- | --- |
 | **Seat map must show held seats.** A plain Redis set of held ids leaves ghost seats after abandoned checkouts, because set members don't expire with the lock keys. | Use a sorted set scored by expiry: `ZADD event:{eventId}:reserved <expiresAt> <ticketId>`. Reads count only future scores; trim old ones with `ZREMRANGEBYSCORE`. Alternative: also write `reserved` to the DB and sweep it, with Redis's TTL as the real expiry. |
-| **Redis goes down.** | Still no double booking: the DB guard from §1 (OCC or a row lock) catches it. The experience gets worse, because a buyer may fail *after* paying and need a refund. That beats cron failing, which makes every seat look taken. |
+| **Redis goes down.** | Still no double booking: the DB guard from section 1 (OCC or a row lock) catches it. The experience gets worse, because a buyer may fail *after* paying and need a refund. That beats cron failing, which makes every seat look taken. |
 | **The hold expires while payment is in flight.** A pays at minute 11 and B grabbed the seat at minute 10. | The DB write for one of them fails (OCC), and that payment is refunded automatically. Make the TTL generous, and **extend the lock when payment starts**. |
 
 **The lab builds both greats** and compares them: seats stuck in limbo, failures after
 payment, and what happens when Redis is killed mid-sale.
 
-**Booking flow with holds:** reserve (lock + booking `in_progress`) → pay → webhook → one
+**Booking flow with holds:** reserve (lock + booking `in_progress`) -> pay -> webhook -> one
 transaction sets ticket `booked` + booking `confirmed`, idempotent on `bookingId`. If that
 transaction fails because the hold was lost, refund.
 
 ---
 
-## §3 Scaling the view API for popular events (step 7, proposed)
+## section 3 Scaling the view API for popular events (step 7, proposed)
 
 **Problem.** Everyone keeps refreshing the same event page.
 
@@ -128,7 +128,7 @@ transaction fails because the hold was lost, refund.
 
 ---
 
-## §4 High-demand events: millions booking at once (step 6)
+## section 4 High-demand events: millions booking at once (step 6)
 
 **Problem.** The seat map goes stale in seconds, and everyone clicks seats that are already
 gone. The step from good to great here is often a *product* decision more than a harder
@@ -136,7 +136,7 @@ technical one.
 
 | Rating | Option | Why |
 | --- | --- | --- |
-| Good | Push seat changes to clients with **SSE** (one-way, server → client) | Fresher map, but at the biggest events every seat vanishes almost at once, which is confusing |
+| Good | Push seat changes to clients with **SSE** (one-way, server -> client) | Fresher map, but at the biggest events every seat vanishes almost at once, which is confusing |
 | Great | **Virtual waiting queue** that an admin turns on per event | Protects the booking path and gives a fair, calm experience |
 
 How the waiting queue works:
@@ -155,7 +155,7 @@ The lab builds the waiting room and runs a ~10,000-buyer spike with and without 
 
 ---
 
-## §5 Low-latency search (step 8, proposed)
+## section 5 Low-latency search (step 8, proposed)
 
 **Problem.** `WHERE name LIKE '%Taylor%' OR description LIKE '%Taylor%'` scans the whole table.
 
@@ -169,11 +169,11 @@ The lab does the Postgres options. Elasticsearch is a stretch goal.
 
 ---
 
-## §6 Repeated search queries (step 8, proposed)
+## section 6 Repeated search queries (step 8, proposed)
 
 | Rating | Option | Watch out for |
 | --- | --- | --- |
-| Good | Cache results in Redis. Build the **key from every parameter that can change the result** (e.g. `search:keyword=…&start=…&end=…`) and set a TTL | Invalidation is hard, because a new event can belong to many cached queries; use TTLs plus tag-based invalidation |
+| Good | Cache results in Redis. Build the **key from every parameter that can change the result** (e.g. `search:keyword=...&start=...&end=...`) and set a TTL | Invalidation is hard, because a new event can belong to many cached queries; use TTLs plus tag-based invalidation |
 | Great | The above, plus Elasticsearch's own caches (query cache for filters, request cache for whole responses) and **CDN** caching of search responses | CDN caching only works if results aren't personalized; still has to be invalidated when new events appear |
 
 ---
@@ -184,4 +184,4 @@ The lab does the Postgres options. Elasticsearch is a stretch goal.
   using at least status + expiry + cron.
 - **Senior:** moves quickly through the high-level design; distributed lock for holds, search
   engine, a plan for popular events, and sharding/replication when asked.
-- **Staff+:** goes deep on 2–3 areas without prompting and brings real operational trade-offs.
+- **Staff+:** goes deep on 2-3 areas without prompting and brings real operational trade-offs.

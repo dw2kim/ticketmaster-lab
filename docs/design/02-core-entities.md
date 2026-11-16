@@ -33,8 +33,8 @@ Columns marked with a step are added in that step, not up front.
 
 `reserved` and `reserved_until` belong to the **implicit-expiry** hold. In the **Redis-lock**
 variant of step 5, tickets have only `available | booked`, and holds live in Redis
-(`ticket:{id}` → userId, plus a sorted set `event:{id}:reserved` for the seat map). See
-`05-deep-dives.md` §2.
+(`ticket:{id}` -> userId, plus a sorted set `event:{id}:reserved` for the seat map). See
+`05-deep-dives.md` section 2.
 
 The seat map lives on the venue; the client draws it and colors each seat from that seat's
 ticket status.
