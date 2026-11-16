@@ -11,8 +11,8 @@ this same problem with childcare rules on top.
 
 | # | Step | You do | Status |
 | --- | --- | --- | --- |
-| 1 | The problem, on paper (no code) | Read, answer 3 questions | Next |
-| 2 | The naive app: one table, one endpoint | Buy tickets one at a time: it works | |
+| 1 | The problem, on paper (no code) | Read, answer 3 questions | Done: `docs/step-1-the-problem.md` |
+| 2 | The naive app: one table, one endpoint | Buy tickets one at a time: it works | Next |
 | 3 | Break it: 200 buyers, 20 tickets, all at once | Count how many were sold | |
 | 4 | Fix it three ways, compare the numbers | Run each fix, read the table | |
 | 5 | Holds: reserve now, pay within 10 minutes | Watch a hold expire | |
