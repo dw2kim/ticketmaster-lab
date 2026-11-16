@@ -69,15 +69,37 @@ Mirrors the design, scaled down to run on a laptop with Docker Compose:
 | --- | --- |
 | PostgreSQL (events, tickets, bookings) | PostgreSQL in Docker |
 | Redis (ticket lock with TTL, event cache) | Redis in Docker (from step 5) |
-| Event / Search / Booking services | Modules in **one** app process (separate services only if a step needs it) |
+| Event / Search / Booking services | Packages in **one** Spring Boot app (separate services only if a step needs it) |
 | Stripe + webhook | Fake payment endpoint that calls our confirm webhook |
 | Virtual waiting queue | Redis-backed queue (step 6) |
 | Elasticsearch + CDC | Postgres full-text search first; Elasticsearch only as a stretch step |
 | API gateway / load balancer / CDN | Out of scope; mentioned in notes only |
 
-The application language/framework is chosen in step 2 and recorded as an ADR; update this
-section and add the run/test commands below when it is.
+**Application** ([ADR-0002](docs/decisions/0002-java-spring-boot.md)):
+
+- **Java 21 + Spring Boot 3** (Web, JDBC, Validation, Actuator), built with **Gradle (Kotlin DSL)**
+  and its wrapper.
+- **Plain SQL through `JdbcClient`/`JdbcTemplate`, no JPA.** The SQL is the lesson, so keep
+  it visible. Keep transactions short and explicit with `@Transactional`; never hold one open
+  across a user's think time.
+- **Flyway** migrations in `src/main/resources/db/migration`; each step adds its own
+  `V<n>__<what>.sql` and never edits an old one.
+- **Spring Data Redis (Lettuce)** from step 5.
+- **Tests:** JUnit 5 + Testcontainers (real Postgres/Redis). Concurrency tests assert the
+  invariant (sold ≤ tickets), not timings.
+- **Load runner:** a small Java program on virtual threads that prints a markdown result
+  table to paste into the step note.
+
+Layout (one module per service idea, all in one app): `event`, `search`, `booking`,
+`payment` (fake), `queue` (step 6), under `src/main/java/.../ticketmaster/`.
 
 ## Commands
 
-_Not set up yet — filled in at step 2 (start DB, run app, run load test)._
+Planned. They become real when step 2 scaffolds the app; fix them here if they change.
+
+```bash
+docker compose up -d          # Postgres (+ Redis from step 5)
+./gradlew bootRun             # run the app on :8080
+./gradlew test                # unit + Testcontainers tests (needs Docker)
+./gradlew loadtest --args="--buyers 200 --tickets 20 --strategy naive"
+```

@@ -1,7 +1,7 @@
 # 05: Deep dives
 
 Each deep dive starts from a non-functional requirement. The options are summarized in our
-own words. In the lab we **run** them, not just discuss them.
+own words from the source. In the lab we **run** them, not just discuss them.
 
 ---
 
@@ -14,11 +14,14 @@ own words. In the lab we **run** them, not just discuss them.
 
 | Option | Idea | Trade-off |
 | --- | --- | --- |
-| Pessimistic row lock | `SELECT … FOR UPDATE` then update | Simple and correct; buyers queue on hot rows |
+| Pessimistic row lock | `SELECT … FOR UPDATE` then update, in one *short* transaction | Simple and correct; buyers queue on hot rows |
 | Optimistic concurrency (OCC) | `UPDATE … WHERE id=? AND version=?`; retry or fail on 0 rows | No waiting; many failures when contention is high |
 | Atomic conditional update | `UPDATE tickets SET status='booked' WHERE id=? AND status='available'` and check the row count | Smallest; the database does the check-and-set in one statement |
 
 Isolation level matters too. Also try running the naive version under `SERIALIZABLE`.
+
+This database-level guard stays in place in every later step. Even when Redis holds the seat
+(§2), the final write to `booked` must still be protected by one of these.
 
 **Measure:** sold count (must equal the number of tickets), rejected count, throughput,
 p50/p95 latency.
@@ -27,20 +30,84 @@ p50/p95 latency.
 
 ## §2 Reserving tickets during checkout (step 5)
 
-**Problem.** No one should spend 5 minutes on a payment form and then lose the seat. Hold it
-for the buyer, release it if they leave, and mark it sold if they pay.
+**Problem.** No one should spend 5 minutes on a payment form and then lose the seat. We need
+three things:
+1. hold the seat for the buyer during checkout,
+2. release it if they leave,
+3. mark it sold and confirm the booking if they pay.
 
-| Rating | Option | Why |
-| --- | --- | --- |
-| Bad | Hold a DB lock for the whole checkout | Long transactions, no timeout semantics, connections pile up |
-| Good | `status=reserved` + `reserved_until`; a cron job releases expired holds | Works; seats stay stuck between cron runs and cron is one more moving part |
-| Great | **Implicit expiry**: treat a ticket as available if `status='available' OR (status='reserved' AND reserved_until < now())` | No stuck seats, no cron needed for correctness (cleanup is optional) |
-| Great | **Redis lock with TTL**: `SET ticket:{id} {userId} NX EX 600` | Auto-expires and keeps holds off the DB; if Redis loses the lock, the DB transaction at confirm time is still the final guard |
+### Bad: a long-running DB lock ("interactive transaction")
 
-The design picks the Redis lock. The lab builds **both** greats and compares them.
+`SELECT … FOR UPDATE` and keep the transaction open while the user types their card.
 
-**Booking flow with holds:** reserve → lock with 10-minute TTL + booking `in_progress` →
-pay → webhook → one transaction sets ticket `booked` + booking `confirmed` (idempotent).
+- Database locks are meant for near-instant transactions. Holding one for minutes ties up
+  connections and raises the risk of contention and deadlocks.
+- No good way to release on abandonment. You depend on session timeouts, and a crashed app or
+  dropped connection can leave the lock in an unclear state.
+- `lock_timeout` only turns waiting into an error for the *next* buyer; it doesn't queue them.
+
+*Lab:* worth a 5-minute demo to see connections pile up, then move on.
+
+### Good: status + `reserved_until`, released by a cron job
+
+Ticket states `available → reserved → booked`. Reserving sets `status='reserved'` and an
+expiry time. A cron job periodically sets expired holds back to `available`.
+
+- **Lag:** a seat stays "reserved" after its hold ends until the next cron run. That's bad
+  for hot events.
+- **Reliability:** if cron stalls or fails, seats look taken when they aren't. That costs
+  sales and annoys users.
+
+### Great: implicit expiry (status is computed, not swept)
+
+A ticket can be taken if `status='available' OR (status='reserved' AND reserved_until < now())`.
+Reserve with one **short** transaction:
+
+```sql
+UPDATE tickets
+   SET status = 'reserved', reserved_until = now() + interval '10 minutes', booking_id = $1
+ WHERE id = $2
+   AND (status = 'available' OR (status = 'reserved' AND reserved_until < now()));
+-- 1 row → you hold it; 0 rows → someone else does
+```
+
+- Only one buyer can win, and an expired hold can be claimed right away. No cron is needed
+  for correctness.
+- Cost: every read filters on two columns, so add a compound index (`event_id, status,
+  reserved_until`). Raw rows can also mislead other readers of the table, because some
+  "reserved" rows are really expired. An optional sweep job tidies them, and if it runs late
+  nothing breaks.
+
+### Great: Redis lock with TTL (the design's pick)
+
+`SET ticket:{ticketId} {userId} NX EX 600`. `SET … NX` is atomic, so only one client gets
+the key.
+
+- **Why Redis when Postgres is already consistent?** Postgres has no per-row TTL. Redis
+  expires keys on its own, and it's in memory, so taking and releasing locks stays fast
+  under heavy concurrency.
+- **The ticket table drops back to two states:** `available | booked`. The hold lives only in
+  Redis, and its value is the user id, so confirm can check that it's the same user who
+  reserved.
+- **Several seats:** take the locks one by one; if any fails, release the ones you already
+  hold. A Lua script can make it atomic when all the keys sit on one Redis node.
+- **On success:** the DB transaction marks the ticket `booked`, then the app deletes the lock
+  early.
+
+Challenges to handle:
+
+| Challenge | What to do |
+| --- | --- |
+| **Seat map must show held seats.** A plain Redis set of held ids leaves ghost seats after abandoned checkouts, because set members don't expire with the lock keys. | Use a sorted set scored by expiry: `ZADD event:{eventId}:reserved <expiresAt> <ticketId>`. Reads count only future scores; trim old ones with `ZREMRANGEBYSCORE`. Alternative: also write `reserved` to the DB and sweep it, with Redis's TTL as the real expiry. |
+| **Redis goes down.** | Still no double booking: the DB guard from §1 (OCC or a row lock) catches it. The experience gets worse, because a buyer may fail *after* paying and need a refund. That beats cron failing, which makes every seat look taken. |
+| **The hold expires while payment is in flight.** A pays at minute 11 and B grabbed the seat at minute 10. | The DB write for one of them fails (OCC), and that payment is refunded automatically. Make the TTL generous, and **extend the lock when payment starts**. |
+
+**The lab builds both greats** and compares them: seats stuck in limbo, failures after
+payment, and what happens when Redis is killed mid-sale.
+
+**Booking flow with holds:** reserve (lock + booking `in_progress`) → pay → webhook → one
+transaction sets ticket `booked` + booking `confirmed`, idempotent on `bookingId`. If that
+transaction fails because the hold was lost, refund.
 
 ---
 
@@ -48,10 +115,14 @@ pay → webhook → one transaction sets ticket `booked` + booking `confirmed` (
 
 **Problem.** Everyone keeps refreshing the same event page.
 
-**Option:** cache event, venue and performer data in Redis (it rarely changes, so a long TTL
-or invalidate on write), scale the services horizontally behind a load balancer, and put a
-CDN at the edge. Seat availability is the part that changes, so cache it only briefly or
-serve it separately.
+- **Cache what's read a lot and rarely changes:** event details, venue, performer.
+  Read-through cache keyed `event:{eventId}`. On a miss, read the DB and fill the cache.
+- **Invalidation:** use long TTLs for static data, short TTLs for anything about
+  availability. Clear entries on write (in the design, DB triggers notify the cache).
+- **Load balancing** (round robin / least connections) and **horizontal scaling**: the Event
+  Service is stateless, so add instances.
+- Challenges: keeping cache and DB in step (rare here, since event data seldom changes), and
+  the work of running many instances (deploys, rollbacks).
 
 **Measure:** requests/sec and p95 with and without the cache; DB queries per request.
 
@@ -60,12 +131,25 @@ serve it separately.
 ## §4 High-demand events: millions booking at once (step 6)
 
 **Problem.** The seat map goes stale in seconds, and everyone clicks seats that are already
-gone.
+gone. The step from good to great here is often a *product* decision more than a harder
+technical one.
 
 | Rating | Option | Why |
 | --- | --- | --- |
-| Good | Push seat changes to clients (SSE) | A fresher map, but for the biggest events the map still turns red almost instantly |
-| Great | **Virtual waiting queue**: put users in a queue (e.g. Redis sorted set by arrival), let N in at a time, notify them when it's their turn (WebSocket/SSE) | Protects the booking path and gives a fair, calm experience |
+| Good | Push seat changes to clients with **SSE** (one-way, server → client) | Fresher map, but at the biggest events every seat vanishes almost at once, which is confusing |
+| Great | **Virtual waiting queue** that an admin turns on per event | Protects the booking path and gives a fair, calm experience |
+
+How the waiting queue works:
+
+1. A user asks for the booking page and is added to a Redis sorted set scored by arrival
+   time. The client keeps an SSE (or WebSocket) connection open for position updates.
+2. Users are let in from the front of the queue on a timer, or as tickets sell. They're told
+   over their connection that it's their turn.
+3. Admitted users go into `admitted:{eventId}` with a TTL. The **Booking Service rejects
+   reserve requests from anyone not in that set**, so the queue can't be skipped.
+
+Challenge: long or badly estimated waits frustrate people, so keep sending position and
+estimated wait.
 
 The lab builds the waiting room and runs a ~10,000-buyer spike with and without it.
 
@@ -73,13 +157,13 @@ The lab builds the waiting room and runs a ~10,000-buyer spike with and without 
 
 ## §5 Low-latency search (step 8, proposed)
 
-**Problem.** `LIKE '%Taylor%'` scans the whole table.
+**Problem.** `WHERE name LIKE '%Taylor%' OR description LIKE '%Taylor%'` scans the whole table.
 
-| Rating | Option |
-| --- | --- |
-| Good | B-tree indexes on filter columns (date, location, type) and tuned queries |
-| Great | Full-text index in the DB (Postgres `tsvector` + GIN) |
-| Great | A dedicated search engine (Elasticsearch), kept in sync from Postgres via CDC |
+| Rating | Option | Watch out for |
+| --- | --- | --- |
+| Good | B-tree indexes on what you filter by (name, date, performer, location); tune queries with `EXPLAIN`, no `SELECT *`, `LIMIT`, and `UNION` instead of `OR` | B-trees don't help `'%Taylor%'`; every index slows writes and costs storage |
+| Great | Full-text search in the DB: Postgres `tsvector` + GIN index | Extra storage and special query syntax; not Lucene, so no fuzzy matching |
+| Great | A dedicated search engine (Elasticsearch, built on inverted indexes) kept in sync from Postgres via **CDC** | Fuzzy search handles typos ("Tayler Swift"); keeping it in sync and running the cluster costs effort |
 
 The lab does the Postgres options. Elasticsearch is a stretch goal.
 
@@ -87,12 +171,10 @@ The lab does the Postgres options. Elasticsearch is a stretch goal.
 
 ## §6 Repeated search queries (step 8, proposed)
 
-**Problem.** Many people run the same search.
-
-| Rating | Option |
-| --- | --- |
-| Good | Cache query results in Redis, keyed by normalized query params, with a short TTL |
-| Great | The above, plus search-engine query caching and edge/CDN caching of popular search responses |
+| Rating | Option | Watch out for |
+| --- | --- | --- |
+| Good | Cache results in Redis. Build the **key from every parameter that can change the result** (e.g. `search:keyword=…&start=…&end=…`) and set a TTL | Invalidation is hard, because a new event can belong to many cached queries; use TTLs plus tag-based invalidation |
+| Great | The above, plus Elasticsearch's own caches (query cache for filters, request cache for whole responses) and **CDN** caching of search responses | CDN caching only works if results aren't personalized; still has to be invalidated when new events appear |
 
 ---
 

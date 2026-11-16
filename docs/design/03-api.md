@@ -39,6 +39,11 @@ POST /webhooks/payment   { "bookingId": "…", "result": "succeeded" }   # from 
 - The webhook marks tickets `booked` and the booking `confirmed` in one transaction. It must
   be **idempotent**: providers retry, so use `bookingId` as the idempotency key and check the
   current status before changing anything.
+- If that transaction fails because the hold expired and someone else booked the seat, the
+  payment is refunded automatically (fake refund in the lab). Starting a payment extends the
+  hold so this stays rare.
+- From step 6, *reserve* is rejected unless the user is in `admitted:{eventId}` (the waiting
+  room let them in).
 
 The user id comes from the auth token in a real system; in the lab we pass a header such as
 `X-User-Id`.
