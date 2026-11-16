@@ -5,7 +5,7 @@ own words from the source. In the lab we **run** them, not just discuss them.
 
 ---
 
-## section 1 No double booking under contention (steps 3-4)
+## Section 1: No double booking under contention (steps 3-4)
 
 **Problem.** Two buyers read "seat 12 is available" at the same moment, and both write
 "sold". This is a read-check-write race.
@@ -28,7 +28,7 @@ p50/p95 latency.
 
 ---
 
-## section 2 Reserving tickets during checkout (step 5)
+## Section 2: Reserving tickets during checkout (step 5)
 
 **Problem.** No one should spend 5 minutes on a payment form and then lose the seat. We need
 three things:
@@ -111,7 +111,7 @@ transaction fails because the hold was lost, refund.
 
 ---
 
-## section 3 Scaling the view API for popular events (step 7, proposed)
+## Section 3: Scaling the view API for popular events (step 7, proposed)
 
 **Problem.** Everyone keeps refreshing the same event page.
 
@@ -128,7 +128,7 @@ transaction fails because the hold was lost, refund.
 
 ---
 
-## section 4 High-demand events: millions booking at once (step 6)
+## Section 4: High-demand events: millions booking at once (step 6)
 
 **Problem.** The seat map goes stale in seconds, and everyone clicks seats that are already
 gone. The step from good to great here is often a *product* decision more than a harder
@@ -155,7 +155,7 @@ The lab builds the waiting room and runs a ~10,000-buyer spike with and without 
 
 ---
 
-## section 5 Low-latency search (step 8, proposed)
+## Section 5: Low-latency search (step 8, proposed)
 
 **Problem.** `WHERE name LIKE '%Taylor%' OR description LIKE '%Taylor%'` scans the whole table.
 
@@ -169,7 +169,7 @@ The lab does the Postgres options. Elasticsearch is a stretch goal.
 
 ---
 
-## section 6 Repeated search queries (step 8, proposed)
+## Section 6: Repeated search queries (step 8, proposed)
 
 | Rating | Option | Watch out for |
 | --- | --- | --- |
