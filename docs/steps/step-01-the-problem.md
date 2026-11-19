@@ -44,25 +44,52 @@ This is called a **race condition**, and this pattern is called **check-then-act
 - So tests that send one request at a time all pass, and the bug only shows up on the day
   that matters.
 
-## Questions to think about (answers below)
+## Quiz (multiple choice)
 
-1. If 200 people buy at once and the server works as above, could **more than 20** people be
-   told "you got a ticket"? Could two people share one ticket?
-2. Java has `synchronized`, which lets only one thread at a time into a piece of code. Would
-   wrapping steps 1-3 in `synchronized` fix it? What if the site runs on **two servers**?
-3. What would you need so that steps 1 and 3 can never be separated?
+Pick one answer per question, then open "Answer" to check.
 
-<details><summary>Answers</summary>
+### Q1. 200 people buy at once and the server works as above. What can happen?
 
-1. Yes to both. Every buyer who looks during someone else's gap sees a ticket that is about to
-   be taken, and is told they got it. Step 3 of this lab measures how many.
-2. On one server, yes: only one request at a time can be between "look" and "write". On two
-   servers, no: each server has its own lock, so one request on each server can be in the gap
-   at the same time. This is why the fix must live in the **database**, the one thing both
-   servers share.
-3. Make "look and write" one single action the database does all at once (for example "give
-   me a free ticket and mark it sold, in one statement"), or lock the ticket so nobody else can
-   look at it until you are done. Step 4 tries three ways.
+- A) Exactly 20 people get a ticket. The database keeps it safe.
+- B) More than 20 people can be told "you got a ticket", and two people can be told they got the same seat.
+- C) Fewer than 20 tickets are sold, but never more.
+- D) The server crashes with an error.
+
+<details><summary>Answer</summary>
+
+**B.** Every buyer who looks during someone else's gap sees a seat that is about to be
+taken, and is told they got it. Nothing crashes (not D), and the database alone does not
+stop it (not A). Step 3 measures how many extra "winners" there are.
+</details>
+
+### Q2. You wrap steps 1-3 in Java `synchronized`. Does it fix the bug?
+
+- A) Yes, always.
+- B) No, never.
+- C) Yes on one server, but no once the site runs on two servers.
+- D) Only if the database is PostgreSQL.
+
+<details><summary>Answer</summary>
+
+**C.** `synchronized` lets one thread at a time into the code, but only inside one Java
+process. With two servers, each has its own lock, so one request on each server can be in
+the gap at the same time. The fix must live in the **database**, the one thing both servers
+share.
+</details>
+
+### Q3. What makes steps 1 and 3 impossible to separate?
+
+- A) Make the server faster, so the gap is smaller.
+- B) Retry the request if it fails.
+- C) Check twice before writing.
+- D) Let the database do "look and write" as one action, or lock the seat until you are done.
+
+<details><summary>Answer</summary>
+
+**D.** For example: "mark seat #7 sold only if it is still free", in one SQL statement. A
+faster server (A) makes the gap smaller but never zero. Checking twice (C) just adds a
+second gap. Retrying (B) does not stop two people from both "winning". Step 4 tries three
+ways to do D.
 </details>
 
 ## What to understand

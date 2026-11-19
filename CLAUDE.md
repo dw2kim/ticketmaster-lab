@@ -41,6 +41,9 @@ in Redis is an optimization or a short-lived hold, never the record of a sale.
 - Short chat messages. No long walkthroughs unless asked.
 - Daewon runs things himself; give the exact commands.
 - End every step with three bullets: "What to understand".
+- Step questions are **multiple choice** (A-D, one correct answer), never free-text. Each one
+  has a folded `<details>` "Answer" that names the correct letter and says why the others are
+  wrong.
 - Keep the app tiny: few tables, few endpoints, no login, no tenants.
 - Plain ASCII in docs; short sentences.
 
