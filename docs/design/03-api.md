@@ -5,7 +5,7 @@ Start simple, then evolve. Each version below is tied to the lab step that intro
 ## View an event (step 2)
 
 ```http
-GET /events/:eventId  →  Event & Venue & Performer & Ticket[]
+GET /events/:eventId  ->  Event & Venue & Performer & Ticket[]
 ```
 
 The tickets come back so the client can draw the seat map.
@@ -13,14 +13,14 @@ The tickets come back so the client can draw the seat map.
 ## Search (step 2 naive, step 8 fast)
 
 ```http
-GET /events/search?keyword=…&start=…&end=…&location=…&type=…&pageSize=…&page=…  →  Partial<Event>[]
+GET /events/search?keyword=...&start=...&end=...&location=...&type=...&pageSize=...&page=...  ->  Partial<Event>[]
 ```
 
 ## Book: first version (step 2)
 
 ```http
-POST /bookings/:eventId  →  bookingId
-{ "ticketIds": ["…"], "paymentDetails": "…" }
+POST /bookings/:eventId  ->  bookingId
+{ "ticketIds": ["..."], "paymentDetails": "..." }
 ```
 
 One call checks the tickets, takes payment and marks them sold. Its weakness: you can fill in
@@ -29,9 +29,9 @@ payment details and only then find out the seat is gone.
 ## Book: reserve then confirm (step 5)
 
 ```http
-POST /bookings/reserve   { "eventId": "…", "ticketIds": ["…"] }    →  { bookingId, expiresAt }
-POST /bookings/confirm   { "bookingId": "…", "paymentToken": "…" } →  { status }
-POST /webhooks/payment   { "bookingId": "…", "result": "succeeded" }   # from the payment provider
+POST /bookings/reserve   { "eventId": "...", "ticketIds": ["..."] }    ->  { bookingId, expiresAt }
+POST /bookings/confirm   { "bookingId": "...", "paymentToken": "..." } ->  { status }
+POST /webhooks/payment   { "bookingId": "...", "result": "succeeded" }   # from the payment provider
 ```
 
 - *reserve* holds the seats for 10 minutes and creates a booking `in_progress`.

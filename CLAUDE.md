@@ -5,7 +5,7 @@ Guidance for Claude (and humans) working in this repo.
 ## What this repo is
 
 A **learning lab**, not a product. It answers one question: *many people, few items, the same
-moment — how do you never sell the same ticket twice?*
+moment - how do you never sell the same ticket twice?*
 
 The design follows the Hello Interview "Design Ticketmaster" breakdown
 (<https://www.hellointerview.com/learn/system-design/problem-breakdowns/ticketmaster>). Our own
@@ -17,16 +17,16 @@ which.
 
 Every piece of work follows the same order. Don't skip ahead.
 
-1. **Requirements** — functional ("users can…") and non-functional ("the system should…"),
-   top 3 only, the rest written down as *below the line*. → `docs/design/01-requirements.md`
-2. **Core entities** — the nouns. → `docs/design/02-core-entities.md`
-3. **API** — the smallest interface that meets the requirements. → `docs/design/03-api.md`
-4. **High-level design** — satisfy each functional requirement one by one, simplest thing
-   that works. → `docs/design/04-high-level-design.md`
-5. **Deep dives** — use the non-functional requirements to find what breaks, then compare
-   bad / good / great options with numbers. → `docs/design/05-deep-dives.md`
+1. **Requirements** - functional ("users can...") and non-functional ("the system should..."),
+   top 3 only, the rest written down as *below the line*. -> `docs/design/01-requirements.md`
+2. **Core entities** - the nouns. -> `docs/design/02-core-entities.md`
+3. **API** - the smallest interface that meets the requirements. -> `docs/design/03-api.md`
+4. **High-level design** - satisfy each functional requirement one by one, simplest thing
+   that works. -> `docs/design/04-high-level-design.md`
+5. **Deep dives** - use the non-functional requirements to find what breaks, then compare
+   bad / good / great options with numbers. -> `docs/design/05-deep-dives.md`
 
-Lab steps 1–3 cover 1–4; steps 4 onward are deep dives. See the step table in `README.md`
+Lab steps 1-3 cover 1-4; steps 4 onward are deep dives. See the step table in `README.md`
 and the mapping in `docs/design/00-approach.md`.
 
 ## The invariant
@@ -35,6 +35,18 @@ and the mapping in `docs/design/00-approach.md`.
 purpose (step 3). The database (PostgreSQL) is the source of truth for ticket state; anything
 in Redis is an optimization or a short-lived hold, never the record of a sale.
 
+## How Daewon wants to work (set 2026-11-16)
+
+- Slow and small: one idea per step. **Never start the next step unless asked.**
+- Short chat messages. No long walkthroughs unless asked.
+- Daewon runs things himself; give the exact commands.
+- End every step with three bullets: "What to understand".
+- Step questions are **multiple choice** (A-D, one correct answer), never free-text. Each one
+  has a folded `<details>` "Answer" that names the correct letter and says why the others are
+  wrong.
+- Keep the app tiny: few tables, few endpoints, no login, no tenants.
+- Plain ASCII in docs; short sentences.
+
 ## How to work in this repo
 
 - **One idea per step.** A step adds the minimum code to show its idea. No speculative
@@ -42,7 +54,7 @@ in Redis is an optimization or a short-lived hold, never the record of a sale.
 - **The user is learning.** Explain *why*, show the numbers, keep code short and readable.
   Prefer a small script the user can run and read over a clever abstraction.
 - **Measure, don't claim.** Concurrency claims need a load script and a result table
-  (e.g. "200 buyers, 20 tickets → 20 sold, 180 rejected, p95 = …").
+  (e.g. "200 buyers, 20 tickets -> 20 sold, 180 rejected, p95 = ...").
 - **Every step ends with notes** in `docs/steps/step-NN-<slug>.md` using
   `docs/steps/_template.md`: what we did, the numbers, and three "what to understand" bullets.
   Update the status column in `README.md`.
@@ -77,21 +89,20 @@ Mirrors the design, scaled down to run on a laptop with Docker Compose:
 
 **Application** ([ADR-0002](docs/decisions/0002-java-spring-boot.md)):
 
-- **Java 21 + Spring Boot 3** (Web, JDBC, Validation, Actuator), built with **Gradle (Kotlin DSL)**
-  and its wrapper.
-- **Plain SQL through `JdbcClient`/`JdbcTemplate`, no JPA.** The SQL is the lesson, so keep
-  it visible. Keep transactions short and explicit with `@Transactional`; never hold one open
-  across a user's think time.
+- **Java 21 + Spring Boot 4.1.x** (Spring MVC), built with **Maven** and its wrapper.
+- **Plain SQL through `JdbcClient`, no JPA.** The SQL is the lesson, so keep it visible.
+  Keep transactions short and explicit with `@Transactional`; never hold one open across a
+  user's think time.
 - **Flyway** migrations in `src/main/resources/db/migration`; each step adds its own
   `V<n>__<what>.sql` and never edits an old one.
-- **Spring Data Redis (Lettuce)** from step 5.
+- **Spring Data Redis** from step 5.
 - **Tests:** JUnit 5 + Testcontainers (real Postgres/Redis). Concurrency tests assert the
-  invariant (sold ≤ tickets), not timings.
-- **Load runner:** a small Java program on virtual threads that prints a markdown result
-  table to paste into the step note.
+  invariant (sold <= tickets), not timings.
+- **Load tests:** k6 scripts in `load/` from step 3, run via Docker so nothing extra is
+  installed.
 
-Layout (one module per service idea, all in one app): `event`, `search`, `booking`,
-`payment` (fake), `queue` (step 6), under `src/main/java/.../ticketmaster/`.
+Layout (one package per service idea, all in one app): `event`, `search`, `booking`,
+`payment` (fake), `queue` (step 6).
 
 ## Commands
 
@@ -99,7 +110,7 @@ Planned. They become real when step 2 scaffolds the app; fix them here if they c
 
 ```bash
 docker compose up -d          # Postgres (+ Redis from step 5)
-./gradlew bootRun             # run the app on :8080
-./gradlew test                # unit + Testcontainers tests (needs Docker)
-./gradlew loadtest --args="--buyers 200 --tickets 20 --strategy naive"
+./mvnw spring-boot:run        # run the app on :8080
+./mvnw test                   # unit + Testcontainers tests (needs Docker)
+docker run --rm -i --network host grafana/k6 run - < load/buy.js   # from step 3
 ```

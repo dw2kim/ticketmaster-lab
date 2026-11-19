@@ -1,6 +1,6 @@
 # 01: Requirements
 
-## Functional ("users should be able to…")
+## Functional ("users should be able to...")
 
 **Above the line (we build these):**
 
@@ -14,7 +14,7 @@
 - Admins create or edit events. (We seed data instead.)
 - Dynamic pricing for popular events.
 
-## Non-functional ("the system should…")
+## Non-functional ("the system should...")
 
 **Above the line:**
 

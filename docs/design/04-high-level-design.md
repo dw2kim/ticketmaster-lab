@@ -4,13 +4,13 @@ Built one functional requirement at a time.
 
 ## 1. View events
 
-Client → API gateway (auth, rate limiting, routing) → **Event Service** → Postgres
+Client -> API gateway (auth, rate limiting, routing) -> **Event Service** -> Postgres
 (events, venues, performers).
 
 ## 2. Search events
 
 Add a **Search Service**. Simplest version: query the events table with filters and
-`LIKE '%term%'`. It works, but it's slow at scale (see deep dives §5).
+`LIKE '%term%'`. It works, but it's slow at scale (see deep dives section 5).
 
 ## 3. Book tickets
 
@@ -33,13 +33,13 @@ fix this.
 ```mermaid
 flowchart LR
   C[Client] --> CDN
-  CDN --> GW[API Gateway<br/>auth · rate limit · routing]
+  CDN --> GW[API Gateway<br/>auth / rate limit / routing]
   GW --> ES[Event Service]
   GW --> SS[Search Service]
   GW --> Q[Virtual waiting queue]
   Q --> BS[Booking Service]
   ES <--> RC[(Redis<br/>event cache)]
-  ES <--> PG[(PostgreSQL<br/>events · tickets · bookings)]
+  ES <--> PG[(PostgreSQL<br/>events / tickets / bookings)]
   SS <--> EL[(Elasticsearch)]
   PG -- CDC --> EL
   BS <--> PG

@@ -12,7 +12,7 @@ What problem, which requirement (link to `docs/design/`).
 
 | Option | Pros | Cons |
 | --- | --- | --- |
-| … | | |
+| ... | | |
 
 ## Decision
 
