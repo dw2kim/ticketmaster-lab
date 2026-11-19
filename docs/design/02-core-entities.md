@@ -31,6 +31,10 @@ bookings    (id, user_id, status,  -- in_progress | confirmed | expired | cancel
 
 Columns marked with a step are added in that step, not up front.
 
+**Lab simplification (step 2):** `venues` and `performers` are not separate tables yet;
+`events` has `venue_name` and `performer_name` text columns. Split them out only if a step
+needs it. Prices and totals: tickets have `price_cents`; `bookings.total_cents` comes later.
+
 `reserved` and `reserved_until` belong to the **implicit-expiry** hold. In the **Redis-lock**
 variant of step 5, tickets have only `available | booked`, and holds live in Redis
 (`ticket:{id}` -> userId, plus a sorted set `event:{id}:reserved` for the seat map). See

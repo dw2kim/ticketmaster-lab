@@ -106,11 +106,15 @@ Layout (one package per service idea, all in one app): `event`, `search`, `booki
 
 ## Commands
 
-Planned. They become real when step 2 scaffolds the app; fix them here if they change.
+Working since step 2 (k6 line from step 3):
 
 ```bash
-docker compose up -d          # Postgres (+ Redis from step 5)
+docker compose up -d          # Postgres 17 on :5432 (user/pass/db: lab/lab/ticketmaster)
 ./mvnw spring-boot:run        # run the app on :8080
-./mvnw test                   # unit + Testcontainers tests (needs Docker)
+./mvnw test                   # tests; start their own Postgres via Testcontainers
+docker compose down -v        # stop and wipe the database
 docker run --rm -i --network host grafana/k6 run - < load/buy.js   # from step 3
 ```
+
+Code lives in `src/main/java/lab/ticketmaster/{event,search,booking}`; migrations in
+`src/main/resources/db/migration`.
