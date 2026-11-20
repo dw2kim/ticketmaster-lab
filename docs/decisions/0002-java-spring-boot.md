@@ -1,4 +1,4 @@
-# ADR-0002: Java 21 + Spring Boot 4.1, Maven, plain SQL, k6
+# ADR-0002: Java 25 + Spring Boot 4.1, Maven, plain SQL, k6
 
 - **Status:** accepted
 - **Date:** 2026-11-16
@@ -14,7 +14,7 @@ thousands of concurrent buyers at it.
 
 | Choice | Picked | Why / why not the others |
 | --- | --- | --- |
-| Language | **Java 21 (LTS)** | Daewon's choice. |
+| Language | **Java 25 (LTS)** | Current LTS, replacing Java 21. |
 | Framework | **Spring Boot 4.1.x**, Spring MVC | Daewon's choice. `@Transactional` makes transaction boundaries explicit. |
 | Build | **Maven** (with wrapper) | Daewon's choice (an earlier draft said Gradle). |
 | Data access | **`JdbcClient`, hand-written SQL** | JPA/Hibernate hides the SQL and adds its own locking and caching: the very thing we study. |
@@ -26,7 +26,7 @@ thousands of concurrent buyers at it.
 
 ## Decision
 
-Java 21 + Spring Boot 4.1.x + Maven, `JdbcClient` with plain SQL, Flyway, JUnit 5 +
+Java 25 + Spring Boot 4.1.x + Maven, `JdbcClient` with plain SQL, Flyway, JUnit 5 +
 Testcontainers, k6, Docker Compose.
 
 ## Consequences
