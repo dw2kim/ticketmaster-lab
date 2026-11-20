@@ -16,8 +16,8 @@ import org.springframework.web.server.ResponseStatusException;
  *
  * Deliberately no @Transactional and no locks.
  */
-@Service
-public class NaiveBookingService {
+@Service("naive")
+public class NaiveBookingService implements BookingService {
 
     private final JdbcClient db;
 
@@ -25,6 +25,7 @@ public class NaiveBookingService {
         this.db = db;
     }
 
+    @Override
     public long book(long eventId, String userId, List<Long> ticketIds) {
         if (ticketIds == null || ticketIds.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ticketIds is empty");

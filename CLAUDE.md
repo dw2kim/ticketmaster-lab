@@ -110,7 +110,8 @@ Working since step 2; load test since step 3:
 
 ```bash
 docker compose up -d          # Postgres 17 on :5432 (user/pass/db: lab/lab/ticketmaster)
-./mvnw spring-boot:run        # run the app on :8080
+./mvnw spring-boot:run        # run the app on :8080 (booking.strategy=conditional)
+./mvnw spring-boot:run -Dspring-boot.run.arguments=--booking.strategy=row-lock   # naive|row-lock|occ|conditional
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac

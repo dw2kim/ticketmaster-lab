@@ -26,6 +26,10 @@ This database-level guard stays in place in every later step. Even when Redis ho
 **Measure:** sold count (must equal the number of tickets), rejected count, throughput,
 p50/p95 latency.
 
+**Lab result (step 4):** all three sold exactly 20 of 20 with 0 cheated buyers; naive told
+28-34 buyers "yes". Default is the conditional update (ADR-0003). Isolation-level
+experiments (`SERIALIZABLE`) were not run; optional.
+
 ---
 
 ## Section 2: Reserving tickets during checkout (step 5)
