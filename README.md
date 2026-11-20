@@ -15,8 +15,9 @@ this same problem with childcare rules on top.
 | 2 | The naive app: view, search, book (no protection) | Buy tickets one at a time: it works | Done: [`docs/steps/step-02-the-naive-app.md`](docs/steps/step-02-the-naive-app.md) |
 | 3 | Break it: 200 buyers, 20 tickets, all at once | Count how many were sold | Done: [`docs/steps/step-03-break-it.md`](docs/steps/step-03-break-it.md) |
 | 4 | Fix it three ways, compare the numbers | Run each fix, read the table | Done: [`docs/steps/step-04-fix-it-three-ways.md`](docs/steps/step-04-fix-it-three-ways.md) |
-| 5 | Holds: reserve now, pay within 10 minutes | Watch a hold expire | Next |
-| 6 | Flash sale: 10,000 buyers and a waiting room | Run the spike | |
+| 5 | Holds: reserve now, pay within 10 minutes | Watch a hold expire | Done: [`docs/steps/step-05-holds.md`](docs/steps/step-05-holds.md) |
+| 5b | *(optional)* Holds in Redis (`SET NX EX`), compare with step 5 | Kill Redis mid-sale | |
+| 6 | Flash sale: 10,000 buyers and a waiting room | Run the spike | Next |
 | 7 | *(optional)* Fast reads: cache the event page | Compare with and without cache | |
 | 8 | *(optional)* Fast search: indexes and full-text | Beat 500 ms | |
 

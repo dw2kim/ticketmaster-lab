@@ -31,6 +31,7 @@ Rules we take from it:
 | 3. Break it: 200 buyers, 20 tickets | Shows why the consistency NFR needs work | 05 section 1 |
 | 4. Fix it three ways | Deep dive: no double booking (row lock vs OCC vs conditional update) | 05 section 1 |
 | 5. Holds: reserve now, pay in 10 min | Deep dive: reserving tickets (status+expiry, Redis lock with TTL) | 05 section 2 |
+| 5b. Holds in Redis *(optional)* | Deep dive: reserving tickets (Redis lock with TTL), compared with step 5 | 05 section 2 |
 | 6. Flash sale and a waiting room | Deep dive: high-demand events (virtual waiting queue) | 05 section 4 |
 | 7. Fast reads *(proposed)* | Deep dive: scaling the view API (cache) | 05 section 3 |
 | 8. Fast search *(proposed)* | Deep dive: low-latency search (indexes, full-text, caching) | 05 section 5, section 6 |

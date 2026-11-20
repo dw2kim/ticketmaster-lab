@@ -26,6 +26,7 @@ tickets     (id, event_id, section, row, seat, price_cents,
              booking_id,        -- null until reserved/booked
              version)           -- for optimistic concurrency (step 4)
 bookings    (id, user_id, status,  -- in_progress | confirmed | expired | cancelled
+             seat_count,        -- step 5: confirm sells all seats or none
              total_cents, created_at, confirmed_at)
 ```
 

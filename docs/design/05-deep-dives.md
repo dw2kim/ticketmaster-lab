@@ -106,6 +106,10 @@ Challenges to handle:
 | **Redis goes down.** | Still no double booking: the DB guard from section 1 (OCC or a row lock) catches it. The experience gets worse, because a buyer may fail *after* paying and need a refund. That beats cron failing, which makes every seat look taken. |
 | **The hold expires while payment is in flight.** A pays at minute 11 and B grabbed the seat at minute 10. | The DB write for one of them fails (OCC), and that payment is refunded automatically. Make the TTL generous, and **extend the lock when payment starts**. |
 
+**Lab result (step 5):** implicit expiry is built (ADR-0004). 200 buyers reserving at once
+got exactly 20 holds in 3 of 3 runs; a 30 second hold expired with no job. The Redis lock is
+optional step 5b.
+
 **The lab builds both greats** and compares them: seats stuck in limbo, failures after
 payment, and what happens when Redis is killed mid-sale.
 

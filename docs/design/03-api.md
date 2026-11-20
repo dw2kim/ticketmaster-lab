@@ -28,6 +28,11 @@ payment details and only then find out the seat is gone.
 
 ## Book: reserve then confirm (step 5)
 
+**What the lab built** (step 5): `POST /bookings/reserve` and `POST /bookings/{bookingId}/confirm`.
+Payment is faked inside confirm; there is no webhook yet. Confirm is already idempotent, which
+is what a webhook needs. The design's full version is below.
+
+
 ```http
 POST /bookings/reserve   { "eventId": "...", "ticketIds": ["..."] }    ->  { bookingId, expiresAt }
 POST /bookings/confirm   { "bookingId": "...", "paymentToken": "..." } ->  { status }
