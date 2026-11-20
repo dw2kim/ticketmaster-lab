@@ -3,6 +3,7 @@ package lab.ticketmaster.booking;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -12,29 +13,25 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Step 5: reserve now, pay within the hold time.
+ * Step 5: holds kept in Postgres (booking.hold-store=postgres, the default).
  *
  * Holds use "implicit expiry" in Postgres (docs/design/05-deep-dives.md section 2):
  * a seat can be taken if it is available, OR reserved but the hold ran out.
  * Both reserve and confirm are ONE short transaction each. Nothing stays open while the
  * buyer types their card details.
  */
-@Service
-public class HoldService {
-
-    public record Hold(long bookingId, OffsetDateTime expiresAt) {}
-
-    public record Confirmed(long bookingId, String status) {}
+@Service("postgres")
+public class PostgresHolds implements Holds {
 
     private final JdbcClient db;
     private final Duration holdFor;
 
-    public HoldService(JdbcClient db, @Value("${booking.hold-duration}") Duration holdFor) {
+    public PostgresHolds(JdbcClient db, @Value("${booking.hold-duration}") Duration holdFor) {
         this.db = db;
         this.holdFor = holdFor;
     }
 
-    /** Hold the seats for this user. 409 if any seat is booked or held by someone else. */
+    @Override
     @Transactional
     public Hold reserve(long eventId, String userId, List<Long> ticketIds) {
         if (ticketIds == null || ticketIds.isEmpty()) {
@@ -90,6 +87,7 @@ public class HoldService {
      * All seats or none: if even one hold ran out and someone else took the seat, the whole
      * booking expires (a real system would refund the payment).
      */
+    @Override
     @Transactional(noRollbackFor = HoldExpiredException.class) // keep the "expired" status
     public Confirmed confirm(long bookingId, String userId) {
         record Booking(String status, int seatCount) {}
@@ -147,8 +145,9 @@ public class HoldService {
         return new Confirmed(bookingId, "confirmed");
     }
 
-    /** 409 when the hold ran out before payment. */
-    @org.springframework.web.bind.annotation.ResponseStatus(value = HttpStatus.CONFLICT,
-            reason = "hold expired; payment would be refunded")
-    public static class HoldExpiredException extends RuntimeException {}
+    /** Postgres holds are already in the tickets table; the seat map reads them from there. */
+    @Override
+    public Set<Long> heldNow(long eventId) {
+        return Set.of();
+    }
 }

@@ -26,6 +26,7 @@ directly extends step 4's conditional update. Measured: 200 buyers -> exactly 20
 of 3 runs; a 30 second hold expires with no job.
 
 The Redis lock becomes an optional later step (5b), so the two greats can be compared.
+Update: built in step 5b; the default stays Postgres (ADR-0005).
 
 ## Consequences
 
