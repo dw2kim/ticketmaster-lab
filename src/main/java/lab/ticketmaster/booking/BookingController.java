@@ -1,7 +1,9 @@
 package lab.ticketmaster.booking;
 
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,7 +12,12 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Book tickets: POST /bookings/{eventId} with {"ticketIds": [...]} and header X-User-Id. */
+/**
+ * Book tickets: POST /bookings/{eventId} with {"ticketIds": [...]} and header X-User-Id.
+ *
+ * Which booking code runs is chosen at startup with booking.strategy
+ * (naive | row-lock | occ | conditional). See BookingService.
+ */
 @RestController
 public class BookingController {
 
@@ -18,10 +25,15 @@ public class BookingController {
 
     public record BookResponse(long bookingId) {}
 
-    private final NaiveBookingService bookings;
+    private final BookingService bookings;
 
-    public BookingController(NaiveBookingService bookings) {
-        this.bookings = bookings;
+    public BookingController(Map<String, BookingService> all,
+                             @Value("${booking.strategy}") String strategy) {
+        this.bookings = all.get(strategy);
+        if (bookings == null) {
+            throw new IllegalArgumentException(
+                    "booking.strategy=" + strategy + " is not one of " + all.keySet());
+        }
     }
 
     @PostMapping("/bookings/{eventId}")
