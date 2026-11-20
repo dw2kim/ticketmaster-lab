@@ -13,8 +13,8 @@ this same problem with childcare rules on top.
 | --- | --- | --- | --- |
 | 1 | The problem, on paper (no code) | Read, answer 3 questions | Done: [`docs/steps/step-01-the-problem.md`](docs/steps/step-01-the-problem.md) |
 | 2 | The naive app: view, search, book (no protection) | Buy tickets one at a time: it works | Done: [`docs/steps/step-02-the-naive-app.md`](docs/steps/step-02-the-naive-app.md) |
-| 3 | Break it: 200 buyers, 20 tickets, all at once | Count how many were sold | Next |
-| 4 | Fix it three ways, compare the numbers | Run each fix, read the table | |
+| 3 | Break it: 200 buyers, 20 tickets, all at once | Count how many were sold | Done: [`docs/steps/step-03-break-it.md`](docs/steps/step-03-break-it.md) |
+| 4 | Fix it three ways, compare the numbers | Run each fix, read the table | Next |
 | 5 | Holds: reserve now, pay within 10 minutes | Watch a hold expire | |
 | 6 | Flash sale: 10,000 buyers and a waiting room | Run the spike | |
 | 7 | *(optional)* Fast reads: cache the event page | Compare with and without cache | |

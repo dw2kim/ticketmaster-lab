@@ -106,14 +106,17 @@ Layout (one package per service idea, all in one app): `event`, `search`, `booki
 
 ## Commands
 
-Working since step 2 (k6 line from step 3):
+Working since step 2; load test since step 3:
 
 ```bash
 docker compose up -d          # Postgres 17 on :5432 (user/pass/db: lab/lab/ticketmaster)
 ./mvnw spring-boot:run        # run the app on :8080
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
-docker run --rm -i --network host grafana/k6 run - < load/buy.js   # from step 3
+docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac
+docker run --rm -i --network host grafana/k6 run - < load/buy.js                                   # Linux
+docker compose exec -T postgres psql -U lab -d ticketmaster < load/count.sql   # promises vs seats
+docker compose exec -T postgres psql -U lab -d ticketmaster < load/reset.sql   # all seats back on sale
 ```
 
 Code lives in `src/main/java/lab/ticketmaster/{event,search,booking}`; migrations in
