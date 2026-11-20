@@ -15,7 +15,7 @@ Booking is now two calls (the old one-call `POST /bookings/{eventId}` still work
 
 Both need header `X-User-Id`.
 
-How a hold works (`HoldService`, "implicit expiry"):
+How a hold works (`PostgresHolds`, was `HoldService`; "implicit expiry"):
 
 ```sql
 -- reserve: one statement; an expired hold counts as free
@@ -36,7 +36,7 @@ UPDATE tickets
 - Both calls are short transactions. Nothing stays open while the buyer types.
 
 New files: `V4__holds.sql` (`tickets.reserved_until`, `bookings.seat_count`),
-`HoldService`, `HoldController`, `HoldTest`, `load/reserve.js`, `load/holds.sql`.
+`HoldService` (now `PostgresHolds`), `HoldController`, `HoldTest`, `load/reserve.js`, `load/holds.sql`.
 Setting: `booking.hold-duration` (default `PT10M`).
 
 ## How to run it

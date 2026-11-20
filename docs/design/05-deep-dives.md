@@ -108,7 +108,11 @@ Challenges to handle:
 
 **Lab result (step 5):** implicit expiry is built (ADR-0004). 200 buyers reserving at once
 got exactly 20 holds in 3 of 3 runs; a 30 second hold expired with no job. The Redis lock is
-optional step 5b.
+step 5b.
+
+**Lab result (step 5b):** the Redis lock is built too (`booking.hold-store=redis`). Same
+correctness (20 of 200 held, 3 of 3 runs; a lost lock is caught by the DB guard), same speed
+within noise. Default stays Postgres (ADR-0005).
 
 **The lab builds both greats** and compares them: seats stuck in limbo, failures after
 payment, and what happens when Redis is killed mid-sale.

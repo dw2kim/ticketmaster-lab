@@ -12,20 +12,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.server.ResponseStatusException;
 
-import lab.ticketmaster.booking.HoldService;
-import lab.ticketmaster.booking.HoldService.HoldExpiredException;
+import lab.ticketmaster.booking.Holds;
+import lab.ticketmaster.booking.Holds.HoldExpiredException;
 
-/** Step 5: reserve, confirm, expire. */
+/** Step 5: reserve, confirm, expire, with holds in Postgres. */
 @SpringBootTest
 @Import(TestcontainersConfig.class)
 class HoldTest {
 
-    @Autowired HoldService holds;
+    @Autowired @Qualifier("postgres") Holds holds;
     @Autowired JdbcClient db;
 
     @BeforeEach
