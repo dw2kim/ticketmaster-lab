@@ -89,7 +89,7 @@ Mirrors the design, scaled down to run on a laptop with Docker Compose:
 
 **Application** ([ADR-0002](docs/decisions/0002-java-spring-boot.md)):
 
-- **Java 21 + Spring Boot 4.1.x** (Spring MVC), built with **Maven** and its wrapper.
+- **Java 25 (LTS) + Spring Boot 4.1.x** (Spring MVC), built with **Maven** and its wrapper.
 - **Plain SQL through `JdbcClient`, no JPA.** The SQL is the lesson, so keep it visible.
   Keep transactions short and explicit with `@Transactional`; never hold one open across a
   user's think time.
