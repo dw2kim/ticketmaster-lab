@@ -1,0 +1,9 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ticketmaster
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab
+    ports:
+      - "5432:5432"
