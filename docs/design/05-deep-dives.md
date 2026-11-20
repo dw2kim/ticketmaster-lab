@@ -165,6 +165,11 @@ estimated wait.
 
 The lab builds the waiting room and runs a ~10,000-buyer spike with and without it.
 
+**Lab result (step 6):** booking path p95 went from 30 s (timeouts) to 4-9 ms behind the
+waiting room, with 0 errors behind it. About 1,800 errors stayed at the very first join,
+because the queue runs inside the same app; real waiting rooms live at the edge. Polling
+instead of SSE (ADR-0006).
+
 ---
 
 ## Section 5: Low-latency search (step 8, proposed)

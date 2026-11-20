@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import lab.ticketmaster.queue.WaitingRoom;
+
 /**
  * Two-step booking (step 5):
  *   POST /bookings/reserve        {"eventId":1,"ticketIds":[...]}  -> 201 {bookingId, expiresAt}
@@ -22,15 +24,18 @@ public class HoldController {
     public record ReserveRequest(long eventId, List<Long> ticketIds) {}
 
     private final HoldStore store;
+    private final WaitingRoom room;
 
-    public HoldController(HoldStore store) {
+    public HoldController(HoldStore store, WaitingRoom room) {
         this.store = store;
+        this.room = room;
     }
 
     @PostMapping("/bookings/reserve")
     @ResponseStatus(HttpStatus.CREATED)
     public Holds.Hold reserve(@RequestHeader("X-User-Id") String userId,
                               @RequestBody ReserveRequest request) {
+        room.checkAdmitted(request.eventId(), userId); // step 6: 403 unless let in
         return store.current().reserve(request.eventId(), userId, request.ticketIds());
     }
 
