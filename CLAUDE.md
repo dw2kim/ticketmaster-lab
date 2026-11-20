@@ -65,9 +65,6 @@ in Redis is an optimization or a short-lived hold, never the record of a sale.
 - **Keep vocabulary consistent** with the design docs: Event, Venue, Performer, Ticket,
   Booking, User; ticket status `available | reserved | booked`; booking status
   `in_progress | confirmed | expired | cancelled`.
-- **Delete the branch when its PR closes** (merged or not). Remote: `git push origin --delete
-  <branch>`. Local: `git branch -D <branch>` and `git fetch --prune`. Check first that no open
-  PR still uses the branch. Never delete `main`.
 
 ## Scope
 
