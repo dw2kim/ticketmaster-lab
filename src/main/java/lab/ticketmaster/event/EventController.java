@@ -28,7 +28,10 @@ public class EventController {
     @GetMapping("/events/{id}")
     public EventView get(@PathVariable long id) {
         List<Ticket> tickets = db.sql("""
-                SELECT id, seat, price_cents, status
+                SELECT id, seat, price_cents,
+                       -- step 5: a hold that ran out shows as available (implicit expiry)
+                       CASE WHEN status = 'reserved' AND reserved_until < now()
+                            THEN 'available' ELSE status END AS status
                   FROM tickets
                  WHERE event_id = :id
                  ORDER BY id

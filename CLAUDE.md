@@ -46,6 +46,8 @@ in Redis is an optimization or a short-lived hold, never the record of a sale.
   wrong.
 - Keep the app tiny: few tables, few endpoints, no login, no tenants.
 - Plain ASCII in docs; short sentences.
+- **Branch names say what the change is:** `step-NN-<slug>` for a step (e.g. `step-05-holds`),
+  `chore/<what>` or `fix/<what>` otherwise. Never a random name.
 
 ## How to work in this repo
 
@@ -112,12 +114,15 @@ Working since step 2; load test since step 3:
 docker compose up -d          # Postgres 17 on :5432 (user/pass/db: lab/lab/ticketmaster)
 ./mvnw spring-boot:run        # run the app on :8080 (booking.strategy=conditional)
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--booking.strategy=row-lock   # naive|row-lock|occ|conditional
+./mvnw spring-boot:run -Dspring-boot.run.arguments=--booking.hold-duration=PT30S   # short holds (step 5)
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac
 docker run --rm -i --network host grafana/k6 run - < load/buy.js                                   # Linux
+docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/reserve.js   # step 5 rush, Mac
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/count.sql   # promises vs seats
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/reset.sql   # all seats back on sale
+docker compose exec -T postgres psql -U lab -d ticketmaster < load/holds.sql   # held / expired / sold / free (step 5)
 ```
 
 Code lives in `src/main/java/lab/ticketmaster/{event,search,booking}`; migrations in

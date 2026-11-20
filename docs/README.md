@@ -4,7 +4,7 @@
 | --- | --- |
 | [`design/`](design/) | The system design we are implementing, following the Hello Interview Ticketmaster breakdown. Source of truth. |
 | [`steps/`](steps/) | One short note per lab step: what we did, the numbers, three things to understand. |
-| [`decisions/`](decisions/) | Short ADRs for choices between real alternatives: [0001 follow the design](decisions/0001-follow-hello-interview-design.md), [0002 Java + Spring Boot](decisions/0002-java-spring-boot.md), [0003 default booking strategy](decisions/0003-default-booking-strategy.md). |
+| [`decisions/`](decisions/) | Short ADRs for choices between real alternatives: [0001 follow the design](decisions/0001-follow-hello-interview-design.md), [0002 Java + Spring Boot](decisions/0002-java-spring-boot.md), [0003 default booking strategy](decisions/0003-default-booking-strategy.md), [0004 holds with implicit expiry](decisions/0004-holds-implicit-expiry.md). |
 
 ## Design, in reading order
 
