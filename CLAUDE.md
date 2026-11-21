@@ -85,7 +85,7 @@ Mirrors the design, scaled down to run on a laptop with Docker Compose:
 | Design component | In this lab |
 | --- | --- |
 | PostgreSQL (events, tickets, bookings) | PostgreSQL in Docker |
-| Redis (ticket lock with TTL, event cache) | Redis 7 in Docker, memory only (from step 5b); read-through event cache (step 7, ADR-0007) |
+| Redis (ticket lock with TTL, event cache) | Redis 7 in Docker, memory only (from step 5b); event page cache with Spring `@Cacheable` + Redis `CacheManager` (step 7, ADR-0007) |
 | Event / Search / Booking services | Packages in **one** Spring Boot app (separate services only if a step needs it) |
 | Stripe + webhook | Fake payment endpoint that calls our confirm webhook |
 | Virtual waiting queue | Redis sorted set + per-user admitted keys, inside the app, polling (step 6, ADR-0006) |
@@ -123,6 +123,7 @@ docker compose up -d          # Postgres 17 on :5432 (lab/lab/ticketmaster), Red
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=100"         # waiting room (step 6)
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1 --queue.tick=30s"   # waiting room, slow enough to watch
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--cache.seat-map-ttl=PT1S   # also cache the seat map (step 7)
+./mvnw spring-boot:run "-Dspring-boot.run.arguments=--cache.seat-map-ttl=PT1S --cache.lock-on-miss=true"   # + stampede lock
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac

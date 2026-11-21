@@ -19,12 +19,13 @@ import lab.ticketmaster.event.EventController;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Step 7: event details come from Redis after the first read; a stale seat map cannot oversell. */
+/** Step 7: @Cacheable fills Redis on the first read and uses it after; a stale seat map cannot oversell. */
 @SpringBootTest(properties = {"cache.event-details-ttl=PT1H", "cache.seat-map-ttl=PT1H"})
 @Import(TestcontainersConfig.class)
 class EventCacheTest {
 
     @Autowired EventController events;
+    @Autowired lab.ticketmaster.event.EventReads reads;
     @Autowired @Qualifier("postgres") Holds holds;
     @Autowired StringRedisTemplate redis;
     @Autowired JdbcClient db;
@@ -38,10 +39,10 @@ class EventCacheTest {
 
     @Test
     void firstReadFillsTheCacheSecondReadUsesIt() {
-        assertThat(redis.hasKey("event:1:details")).isFalse();
+        assertThat(redis.hasKey("event-details:1")).isFalse();
         events.get(1);
-        assertThat(redis.hasKey("event:1:details")).isTrue();
-        assertThat(redis.getExpire("event:1:details")).isBetween(3500L, 3600L);
+        assertThat(redis.hasKey("event-details:1")).isTrue();
+        assertThat(redis.getExpire("event-details:1")).isBetween(3500L, 3600L);
 
         // Prove the second read does not ask the database: change the row, read again.
         db.sql("UPDATE events SET name = 'Renamed' WHERE id = 1").update();
@@ -60,8 +61,16 @@ class EventCacheTest {
     }
 
     @Test
+    void cachedMethodsAreBehindAProxy() {
+        // Point 4: @Cacheable only works through the proxy Spring puts around EventReads.
+        assertThat(org.springframework.aop.support.AopUtils.isAopProxy(reads)).isTrue();
+        events.get(1);
+        assertThat(redis.hasKey("seat-map:1")).isTrue();
+    }
+
+    @Test
     void unknownEventIsNotCached() {
         assertThatThrownBy(() -> events.get(999)).isInstanceOf(ResponseStatusException.class);
-        assertThat(redis.hasKey("event:999:details")).isFalse();
+        assertThat(redis.hasKey("event-details:999")).isFalse();
     }
 }

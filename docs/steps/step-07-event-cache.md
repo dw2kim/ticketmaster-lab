@@ -6,28 +6,50 @@ instead of asking Postgres every time, and cache each part only as long as it st
 
 ## What we built
 
-`GET /events/1` is two database reads: the event details and the seat map. Now each one can
-come from a **read-through cache** in Redis (`ReadThroughCache`):
+`GET /events/1` is two database reads: the event details and the seat map. Each one can now
+come from a **read-through cache** in Redis:
 
 ```
-1. GET event:1:details from Redis    -> found ("hit")?  return it, no database
-2. not found ("miss")?               -> read Postgres, SET event:1:details <json> EX <ttl>
+1. look in Redis for event-details:1   -> found ("hit")?  return it, no database
+2. not found ("miss")?                  -> read Postgres, store it with a TTL, return it
 ```
 
-| Cache key | What | Changes | TTL setting | Default |
+| Cache (Redis key) | What | Changes | TTL setting | Default |
 | --- | --- | --- | --- | --- |
-| `event:1:details` | name, venue, performer, date | almost never | `cache.event-details-ttl` | `PT1H` (on) |
-| `event:1:seats` | status of every seat | every second | `cache.seat-map-ttl` | `PT0S` (off) |
+| `event-details:1` | name, venue, performer, date | almost never | `cache.event-details-ttl` | `PT1H` (on) |
+| `seat-map:1` | status of every seat | every second | `cache.seat-map-ttl` | `PT0S` (off) |
 
 - A long TTL is safe for data that does not change. A short TTL (or none) for data that does.
 - **A stale seat map cannot oversell.** It can show a taken seat as free; the buyer then gets
   `409` from reserve, which always checks the database (step 4).
-- If Redis is down, every read is a miss: slower, but the page still works.
 - No invalidation code: our events never change (no admin endpoints). A real system would
-  also delete `event:1:details` when an admin edits the event.
+  also evict `event-details:1` when an admin edits the event (`@CacheEvict`).
 
-New files: `event/ReadThroughCache`, `EventCacheTest` (3 tests), `load/view.js`,
-`load/dbcalls.sql`.
+### Two versions, same behaviour
+
+**Version 1 (hand-written, now commented out):** `event/ReadThroughCache.java`. Every step
+(get, miss, load, set) is a line of code you can read. Kept as comments to compare.
+
+**Version 2 (in use): Spring's `@Cacheable` with a Redis `CacheManager`**, as a real app
+would do it. The proxy around `EventReads` does the same get/miss/load/set for you:
+
+```java
+@Cacheable(cacheNames = "seat-map", key = "#id", sync = true,
+           condition = "@cacheSettings.seatMapCached()")
+public SeatMap seats(long id) { ... SELECT ... FROM tickets ... }
+```
+
+What a real app must remember, and where it is in the code:
+
+| Point | What goes wrong otherwise | Where |
+| --- | --- | --- |
+| One TTL per cache | One TTL for everything; and in Spring's Redis cache **TTL 0 means "forever"**, not "off" | `CacheConfig` (TTL per cache name), `CacheSettings` (`condition` turns a cache off) |
+| Redis down | By default a cache error fails the whole request | `CacheConfig.errorHandler()`: log a warning, read the database |
+| Calls from inside the same class | `this.method()` skips the proxy: no caching, **no error** | Cached methods live in their own bean, `EventReads` |
+| Cache stampede | `sync = true` alone does **not** help with Redis in Spring Data Redis 4 (we measured it) | `cache.lock-on-miss=true`: a locking cache writer (a lock in Redis) |
+
+New files: `event/EventReads`, `event/CacheConfig`, `event/CacheSettings`,
+`EventCacheTest` (4 tests), `CacheRedisDownTest`, `load/view.js`, `load/dbcalls.sql`.
 
 ## How to run it
 
@@ -83,26 +105,26 @@ docker compose exec redis redis-cli FLUSHALL
 curl -s localhost:8080/events/1
 ```
 
-2. Look inside Redis. You should see `event:1:seats` and `event:1:details`:
+2. Look inside Redis. You should see `event-details:1` and `seat-map:1`:
 
 ```bash
-docker compose exec redis redis-cli KEYS 'event:*'
+docker compose exec redis redis-cli KEYS '*'
 ```
 
 How long each lives: about `10` for the seats, about `3600` for the details.
 
 ```bash
-docker compose exec redis redis-cli TTL event:1:seats
+docker compose exec redis redis-cli TTL seat-map:1
 ```
 
 ```bash
-docker compose exec redis redis-cli TTL event:1:details
+docker compose exec redis redis-cli TTL event-details:1
 ```
 
 What is stored (JSON):
 
 ```bash
-docker compose exec redis redis-cli GET event:1:details
+docker compose exec redis redis-cli GET event-details:1
 ```
 
 3. Ana reserves A1. You should see a `bookingId`:
@@ -127,6 +149,25 @@ curl -s -X POST localhost:8080/bookings/reserve -H 'X-User-Id: ben' -H 'Content-
 
 6. Wait 10 seconds, open the page again (step 4's command). Now A1 says `"reserved"`.
 
+7. Stop Redis, then open the page. It still works (status `200`), just slower (about 2 s:
+   each of the two cache reads waits 1 s for Redis before giving up):
+
+```bash
+docker compose stop redis
+```
+
+```bash
+curl -s -o /dev/null -w "%{http_code} in %{time_total}s\n" localhost:8080/events/1
+```
+
+In **Terminal 1** you see the CacheErrorHandler at work:
+`cache event-details unavailable, reading from the database: Redis command timed out`.
+Start Redis again:
+
+```bash
+docker compose start redis
+```
+
 Done with Part A: **Terminal 1**, `Ctrl+C`.
 
 ### Part B: measure the speed-up
@@ -139,6 +180,7 @@ counter, run k6, note the counter again in Terminal 2, (3) `Ctrl+C` in Terminal 
 | no cache | `./mvnw spring-boot:run "-Dspring-boot.run.arguments=--cache.event-details-ttl=PT0S --cache.seat-map-ttl=PT0S"` |
 | details cached (the default) | `./mvnw spring-boot:run` |
 | details + seat map (1 s) | `./mvnw spring-boot:run -Dspring-boot.run.arguments=--cache.seat-map-ttl=PT1S` |
+| same, with the stampede lock | `./mvnw spring-boot:run "-Dspring-boot.run.arguments=--cache.seat-map-ttl=PT1S --cache.lock-on-miss=true"` |
 
 **Terminal 2**, for each run:
 
@@ -177,19 +219,27 @@ docker compose down -v
 
 ## Numbers
 
-200 viewers, 30 seconds, `load/view.js`, after a 10 s warm-up, 2 runs each, lab machine
-(4 CPUs; k6 runs on the same machine).
+200 viewers, 30 seconds, `load/view.js`, after a 10 s warm-up, lab machine (4 CPUs; k6 runs on
+the same machine). Two runs each. "DB calls" = Postgres transactions during the 30 s.
 
-| Cache | Requests/s | DB calls per request | p50 | p95 | p99 |
-| --- | --- | --- | --- | --- | --- |
-| none | 3,464 / 3,352 | 1.97 / 1.96 | 52 ms | 152 / 158 ms | 216 / 226 ms |
-| details (1 h) | 3,629 / 3,833 | 0.99 / 1.00 | 50 / 46 ms | 113 ms | 172 / 171 ms |
-| details + seats (1 s) | 5,466 / 5,260 | 0.012 / 0.009 | 33 / 34 ms | 71 / 73 ms | 105 / 119 ms |
+**Version 2 (`@Cacheable`, in use):**
+
+| Cache | Requests/s | DB calls per request | DB calls in 30 s | p50 | p95 | p99 |
+| --- | --- | --- | --- | --- | --- | --- |
+| none | 3,568 / 3,587 | 1.97 / 1.99 | ~213,000 | 51 / 50 ms | 150 / 147 ms | 208 / 204 ms |
+| details (1 h) | 3,894 / 3,872 | 1.00 / 0.99 | ~116,000 | 46 / 45 ms | 109 / 111 ms | 166 / 174 ms |
+| details + seats (1 s) | 5,533 / 5,726 | 0.008 / 0.010 | 1,388 / 1,662 | 32 / 32 ms | 72 / 68 ms | 116 / 104 ms |
+| details + seats (1 s) + lock | 3,538 / 3,828 / 3,647 | 0.0005 | **66 / 62 / 64** | 40 / 38 / 39 ms | 91 / 94 / 99 ms | 297 / 440 / 543 ms |
+
+**Version 1 (hand-written), for comparison:** none 3,464 / 3,352 req/s, p95 152 / 158 ms;
+details 3,629 / 3,833, p95 113 ms; details + seats (1 s) 5,466 / 5,260, p95 71 / 73 ms,
+1,424 / 2,046 DB calls. Same speed as version 2: `@Cacheable` adds no measurable cost here.
 
 0 failed requests in all runs.
 
-Stale seat map demo (10 s seat cache): Ana reserved A1; the page still showed A1
-`available`; Ben's reserve got `409`; 10 s later the page showed `reserved`.
+Demos: with a 10 s seat cache, Ana reserved A1, the page still showed A1 `available`, Ben's
+reserve got `409`, and 10 s later the page showed `reserved`. With Redis stopped, the page
+returned `200` in about 2 s, from the database.
 
 ## What surprised us
 
@@ -199,9 +249,17 @@ Stale seat map demo (10 s seat cache): Ana reserved A1; the page still showed A1
   throughput by about 55%. Even a very short TTL helps when thousands read the same key.
 - **Cache stampede:** with a 1 s seat cache we expected about 30 database calls in 30 s (one
   per expiry). We measured 1,400 to 2,000. When the key expires, many of the 200 viewers miss
-  at the same moment and all ask Postgres together. Real systems fix this by letting only one
-  request refill the key (a lock or "single flight") or by refreshing it just before it expires.
+  at the same moment and all ask Postgres together. Postgres's statement log showed 571 copies
+  of the seat-map query in 10 s.
+- **`sync = true` did not fix it.** Spring suggests it, but in Spring Data Redis 4 a Redis
+  cache only refills once per miss with a *locking* cache writer. With the lock: 66 database
+  calls instead of ~1,500. The price: every read also checks the lock, so throughput fell from
+  ~5,600 to ~3,700 requests/s and p99 rose to 300-540 ms. A lock protects the database at the
+  cost of every reader. Off by default here, because our database is not the bottleneck.
+- **TTL 0 means "forever"** in Spring's Redis cache. "Off" needs a `condition`, not a TTL.
 - With caching, the app itself (and k6 on the same machine) becomes the limit, not Postgres.
+- `@Cacheable` was as fast as the hand-written version. Less code, same result, but you have
+  to know the four points above.
 
 ## Quiz (multiple choice)
 
