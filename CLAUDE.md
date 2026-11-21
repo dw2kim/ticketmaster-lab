@@ -88,7 +88,7 @@ Mirrors the design, scaled down to run on a laptop with Docker Compose:
 | Design component | In this lab |
 | --- | --- |
 | PostgreSQL (events, tickets, bookings) | PostgreSQL in Docker |
-| Redis (ticket lock with TTL, event cache) | Redis 7 in Docker, memory only (from step 5b) |
+| Redis (ticket lock with TTL, event cache) | Redis 7 in Docker, memory only (from step 5b); read-through event cache (step 7, ADR-0007) |
 | Event / Search / Booking services | Packages in **one** Spring Boot app (separate services only if a step needs it) |
 | Stripe + webhook | Fake payment endpoint that calls our confirm webhook |
 | Virtual waiting queue | Redis sorted set + per-user admitted keys, inside the app, polling (step 6, ADR-0006) |
@@ -125,6 +125,7 @@ docker compose up -d          # Postgres 17 on :5432 (lab/lab/ticketmaster), Red
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--booking.hold-store=redis --booking.hold-duration=PT30S"   # Redis holds (step 5b)
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=100"         # waiting room (step 6)
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1 --queue.tick=30s"   # waiting room, slow enough to watch
+./mvnw spring-boot:run -Dspring-boot.run.arguments=--cache.seat-map-ttl=PT1S   # also cache the seat map (step 7)
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac
@@ -134,7 +135,9 @@ docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 -e QUEUE=1 grafa
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/count.sql   # promises vs seats
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/reset.sql   # all seats back on sale
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/holds.sql   # held / expired / sold / free (step 5)
-docker compose exec redis redis-cli FLUSHALL                                    # forget all Redis holds (step 5b)
+docker compose exec redis redis-cli FLUSHALL                                    # forget all Redis holds and caches
+docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/view.js   # step 7: 200 viewers, 30 s
+docker compose exec -T postgres psql -U lab -d ticketmaster < load/dbcalls.sql   # DB transactions so far (step 7)
 ```
 
 Tests start their own Postgres and Redis. Code lives in `src/main/java/lab/ticketmaster/{event,search,booking,queue}`; migrations in
