@@ -2,7 +2,6 @@ package lab.ticketmaster;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Duration;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -13,8 +12,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
 import lab.ticketmaster.search.ElasticIndexer;
 import lab.ticketmaster.search.EventSearch;
@@ -25,21 +22,9 @@ import lab.ticketmaster.search.EventSearch.EventSummary;
 @Import(TestcontainersConfig.class)
 class ElasticSearchTest {
 
-    static final GenericContainer<?> ELASTIC = new GenericContainer<>("elasticsearch:9.1.5")
-            .withEnv("discovery.type", "single-node")
-            .withEnv("xpack.security.enabled", "false")
-            .withEnv("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
-            .withExposedPorts(9200)
-            .waitingFor(Wait.forHttp("/").forStatusCode(200).withStartupTimeout(Duration.ofMinutes(3)));
-
-    static {
-        ELASTIC.start();
-    }
-
     @DynamicPropertySource
     static void elasticUrl(DynamicPropertyRegistry registry) {
-        registry.add("search.elasticsearch.url",
-                () -> "http://" + ELASTIC.getHost() + ":" + ELASTIC.getMappedPort(9200));
+        ElasticTestContainer.register(registry);
     }
 
     @Autowired EventSearch search;
