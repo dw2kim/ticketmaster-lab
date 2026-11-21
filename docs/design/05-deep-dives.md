@@ -138,6 +138,11 @@ transaction fails because the hold was lost, refund.
 
 **Measure:** requests/sec and p95 with and without the cache; DB queries per request.
 
+**Lab result (step 7):** read-through cache in Redis. Details cached (1 h): DB calls per
+request 2 -> 1, p95 155 -> 113 ms. Plus seat map (1 s): 0.01 DB calls per request, about
+5,400 vs 3,400 requests/s, p95 72 ms. A stale seat map never oversold (reserve got 409).
+Seen: cache stampede at each expiry. Seat map cache off by default (ADR-0007).
+
 ---
 
 ## Section 4: High-demand events: millions booking at once (step 6)
