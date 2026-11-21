@@ -124,7 +124,7 @@ docker compose up -d          # Postgres 17 on :5432 (lab/lab/ticketmaster), Red
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--booking.hold-duration=PT30S   # short holds (step 5)
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--booking.hold-store=redis --booking.hold-duration=PT30S"   # Redis holds (step 5b)
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=100"         # waiting room (step 6)
-./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1 --queue.tick=10s"   # waiting room, slow enough to watch
+./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1 --queue.tick=30s"   # waiting room, slow enough to watch
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac

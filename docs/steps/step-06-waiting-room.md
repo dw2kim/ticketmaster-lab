@@ -31,7 +31,7 @@ book:    no admitted:1:<userId> key?           -> 403
 - **Polling, not SSE:** clients ask "where am I?" every 1-5 seconds, as long as the server
   suggests. The design pushes updates with SSE; polling keeps the lab small (ADR-0006).
 - Settings: `queue.admit-per-second` (people let in per tick, default 50), `queue.tick`
-  (default 1 s; 10 s makes the waiting easy to watch by hand), `queue.admitted-for` (default 10 min).
+  (default 1 s; 30 s makes the waiting easy to watch by hand), `queue.admitted-for` (default 10 min).
 
 New files: `queue/WaitingRoom`, `queue/QueueAdmitter`, `queue/QueueController`,
 `WaitingRoomTest` (4 tests), `load/spike.js`.
@@ -87,11 +87,11 @@ cd ~/ticketmaster-lab
 
 ### Part A: feel the waiting room by hand
 
-**Terminal 1.** Start the app with the waiting room on, letting in **1 person every 10
-seconds** (slow on purpose, so you can watch):
+**Terminal 1.** Start the app with the waiting room on, letting in **1 person every 30
+seconds** (slow on purpose, so you have time to type):
 
 ```bash
-./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1 --queue.tick=10s"
+./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1 --queue.tick=30s"
 ```
 
 Wait for this line in the log. The app is ready when you see it:
@@ -102,6 +102,17 @@ Started TicketmasterApplication in 3.8 seconds
 
 **Terminal 2.** Type each command; compare with "you should see".
 
+0. Start clean: all seats free, the line empty. Earlier steps left seats taken, and a taken
+   seat gives `409` even when you were let in.
+
+```bash
+docker compose exec -T postgres psql -U lab -d ticketmaster < load/reset.sql
+```
+
+```bash
+docker compose exec redis redis-cli FLUSHALL
+```
+
 1. Reserve without queueing.
 
 ```bash
@@ -110,21 +121,17 @@ curl -s -X POST localhost:8080/bookings/reserve -H 'X-User-Id: ana' -H 'Content-
 
 You should see `403` and `"message":"waiting room is on: you have not been let in yet ..."`.
 
-2. Ana joins the line:
+2. Ana and Ben join the line, one right after the other (one command, so no tick falls
+   between them):
 
 ```bash
-curl -s -X POST localhost:8080/events/1/queue -H 'X-User-Id: ana'
+curl -s -X POST localhost:8080/events/1/queue -H 'X-User-Id: ana'; echo; curl -s -X POST localhost:8080/events/1/queue -H 'X-User-Id: ben'; echo
 ```
 
-You should see `{"admitted":false,"position":1,"estimatedWaitSeconds":10}`.
+You should see two lines: Ana `"position":1`, Ben `"position":2`. The
+`estimatedWaitSeconds` depend on when the next tick comes (at most 30 and 60).
 
-3. Ben joins right after her:
-
-```bash
-curl -s -X POST localhost:8080/events/1/queue -H 'X-User-Id: ben'
-```
-
-You should see `{"admitted":false,"position":2,"estimatedWaitSeconds":20}`.
+3. (Step 2 already added Ben.)
 
 4. Look at the line inside Redis: names with their arrival numbers, Ana first.
 
@@ -140,7 +147,7 @@ curl -s -X POST localhost:8080/bookings/reserve -H 'X-User-Id: ben' -H 'Content-
 
 You should see `403`. He is in the line, but not let in yet.
 
-6. Wait about 10 seconds. Ask where Ana and Ben are:
+6. Wait until Ana's estimate has passed (at most 30 seconds). Ask where Ana and Ben are:
 
 ```bash
 curl -s localhost:8080/events/1/queue -H 'X-User-Id: ana'
@@ -150,7 +157,7 @@ curl -s localhost:8080/events/1/queue -H 'X-User-Id: ana'
 curl -s localhost:8080/events/1/queue -H 'X-User-Id: ben'
 ```
 
-You should see Ana `{"admitted":true,...}`, and Ben `{"admitted":false,"position":1,"estimatedWaitSeconds":10}`.
+You should see Ana `{"admitted":true,...}`, and Ben `{"admitted":false,"position":1,...}`.
 He moved up.
 
 7. Ana reserves:
@@ -167,11 +174,12 @@ You should see `{"bookingId":...,"expiresAt":...}` (201).
 docker compose exec redis redis-cli TTL admitted:1:ana
 ```
 
-9. Wait another 10 seconds and repeat Ben's command from step 6 (`"admitted":true`), then from
+9. Wait another 30 seconds and repeat Ben's command from step 6 (`"admitted":true`), then from
    step 5 (now he gets a `bookingId`).
 
-If a command says `position` is gone and `admitted` is `true` sooner than you expected, the
-tick happened while you were typing. That is fine.
+If someone shows `"admitted":true` sooner than you expected, a tick happened while you were
+typing; the line moved on without you watching. Everything still works. If a reserve gives
+`409 seat already held or booked`, the seat is taken: run the two reset commands in step 0.
 
 Done with Part A: go to **Terminal 1** and press `Ctrl+C` to stop the app.
 
@@ -253,6 +261,7 @@ docker compose down -v
 | `curl: (7) Failed to connect` | The app is not running | Start it in Terminal 1, wait for `Started` |
 | `404` on `/events/1/queue` | Old code: wrong branch | `git checkout step-06-waiting-room`, restart the app |
 | `403` on reserve | Waiting room is on and you were not let in | Join, then wait until `admitted` is `true` |
+| `409` on reserve after being let in | The seat is taken from an earlier try | Run the two reset commands (Part A, step 0) |
 | `release version 25 not supported` | Java is not 25 | See `java -version`; fix `JAVA_HOME` |
 | `no configuration file provided` | Not in the project folder | `cd ~/ticketmaster-lab` |
 | k6 shows `connection refused` for every request | App not running, or wrong `BASE_URL` | Check Terminal 1; on a Mac use `host.docker.internal` |
