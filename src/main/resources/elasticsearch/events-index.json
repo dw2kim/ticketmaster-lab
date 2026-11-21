@@ -1,0 +1,12 @@
+{
+  "mappings": {
+    "properties": {
+      "id":            { "type": "long" },
+      "name":          { "type": "text", "analyzer": "english" },
+      "description":   { "type": "text", "analyzer": "english" },
+      "performerName": { "type": "text", "analyzer": "english" },
+      "venueName":     { "type": "text" },
+      "startsAt":      { "type": "date" }
+    }
+  }
+}

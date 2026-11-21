@@ -20,6 +20,7 @@ this same problem with childcare rules on top.
 | 6 | Flash sale: 10,000 buyers and a waiting room | Run the spike | Done: [`docs/steps/step-06-waiting-room.md`](docs/steps/step-06-waiting-room.md) |
 | 7 | *(optional)* Fast reads: cache the event page | Compare with and without cache | Done: [`docs/steps/step-07-event-cache.md`](docs/steps/step-07-event-cache.md) |
 | 8 | *(optional)* Fast search: indexes and full-text | Beat 500 ms | Done: [`docs/steps/step-08-search.md`](docs/steps/step-08-search.md) |
+| 9 | *(stretch)* Search with Elasticsearch: typos, a copy that goes stale | Find `Sparows` | Done: [`docs/steps/step-09-elasticsearch.md`](docs/steps/step-09-elasticsearch.md) |
 
 Each step: one idea, short notes in `docs/steps/`, and three "what to understand" bullets at the end.
 
