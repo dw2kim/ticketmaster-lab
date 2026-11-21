@@ -30,60 +30,165 @@ book:    no admitted:1:<userId> key?           -> 403
   member cannot (same lesson as step 5b's sorted set).
 - **Polling, not SSE:** clients ask "where am I?" every 1-5 seconds, as long as the server
   suggests. The design pushes updates with SSE; polling keeps the lab small (ADR-0006).
-- Settings: `queue.admit-per-second` (default 50), `queue.admitted-for` (default 10 min).
+- Settings: `queue.admit-per-second` (people let in per tick, default 50), `queue.tick`
+  (default 1 s; 10 s makes the waiting easy to watch by hand), `queue.admitted-for` (default 10 min).
 
 New files: `queue/WaitingRoom`, `queue/QueueAdmitter`, `queue/QueueController`,
 `WaitingRoomTest` (4 tests), `load/spike.js`.
 
 ## How to run it
 
-**A. Feel the waiting room by hand.** Terminal 1 (let in 1 person per second):
+You need **two terminal windows**, both in the `ticketmaster-lab` folder:
+
+- **Terminal 1 runs the app.** It stays busy and prints the app's log. Stop the app there
+  with `Ctrl+C`.
+- **Terminal 2 is where you type everything else** (curl, redis-cli, k6).
+
+### 0. Once, before you start
+
+In **Terminal 1**:
+
+1. Go to the project folder (change the path if you cloned it somewhere else):
+
+```bash
+cd ~/ticketmaster-lab
+```
+
+2. Get this step's code:
+
+```bash
+git fetch origin && git checkout step-06-waiting-room && git pull
+```
+
+3. Check Java. It must say `25`:
+
+```bash
+java -version
+```
+
+4. Make sure Docker Desktop is running (whale icon in the menu bar). Then start Postgres and
+   Redis:
 
 ```bash
 docker compose up -d
 ```
 
+5. Check both are up. You should see `postgres` and `redis`, both `running`:
+
 ```bash
-./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1"
+docker compose ps
 ```
 
-Terminal 2. Reserving without queueing is refused (403):
+Open **Terminal 2** (`Cmd+T` in Terminal opens a new tab) and go to the same folder:
+
+```bash
+cd ~/ticketmaster-lab
+```
+
+### Part A: feel the waiting room by hand
+
+**Terminal 1.** Start the app with the waiting room on, letting in **1 person every 10
+seconds** (slow on purpose, so you can watch):
+
+```bash
+./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1 --queue.tick=10s"
+```
+
+Wait for this line in the log. The app is ready when you see it:
+
+```
+Started TicketmasterApplication in 3.8 seconds
+```
+
+**Terminal 2.** Type each command; compare with "you should see".
+
+1. Reserve without queueing.
 
 ```bash
 curl -s -X POST localhost:8080/bookings/reserve -H 'X-User-Id: ana' -H 'Content-Type: application/json' -d '{"eventId":1,"ticketIds":[1]}'
 ```
 
-Ana and Ben join:
+You should see `403` and `"message":"waiting room is on: you have not been let in yet ..."`.
+
+2. Ana joins the line:
 
 ```bash
 curl -s -X POST localhost:8080/events/1/queue -H 'X-User-Id: ana'
 ```
 
+You should see `{"admitted":false,"position":1,"estimatedWaitSeconds":10}`.
+
+3. Ben joins right after her:
+
 ```bash
 curl -s -X POST localhost:8080/events/1/queue -H 'X-User-Id: ben'
 ```
 
-A second later, ask again. `admitted` turns `true`. Then reserve works (201):
+You should see `{"admitted":false,"position":2,"estimatedWaitSeconds":20}`.
+
+4. Look at the line inside Redis: names with their arrival numbers, Ana first.
+
+```bash
+docker compose exec redis redis-cli ZRANGE queue:1 0 -1 WITHSCORES
+```
+
+5. Ben tries to skip the line:
+
+```bash
+curl -s -X POST localhost:8080/bookings/reserve -H 'X-User-Id: ben' -H 'Content-Type: application/json' -d '{"eventId":1,"ticketIds":[2]}'
+```
+
+You should see `403`. He is in the line, but not let in yet.
+
+6. Wait about 10 seconds. Ask where Ana and Ben are:
 
 ```bash
 curl -s localhost:8080/events/1/queue -H 'X-User-Id: ana'
 ```
 
 ```bash
+curl -s localhost:8080/events/1/queue -H 'X-User-Id: ben'
+```
+
+You should see Ana `{"admitted":true,...}`, and Ben `{"admitted":false,"position":1,"estimatedWaitSeconds":10}`.
+He moved up.
+
+7. Ana reserves:
+
+```bash
 curl -s -X POST localhost:8080/bookings/reserve -H 'X-User-Id: ana' -H 'Content-Type: application/json' -d '{"eventId":1,"ticketIds":[1]}'
 ```
 
-Peek into Redis:
+You should see `{"bookingId":...,"expiresAt":...}` (201).
 
-```bash
-docker compose exec redis redis-cli ZRANGE queue:1 0 -1 WITHSCORES
-```
+8. See how long Ana may book before she must queue again (about 600 seconds):
 
 ```bash
 docker compose exec redis redis-cli TTL admitted:1:ana
 ```
 
-**B. The 10,000-buyer spike.** Reset first, each time:
+9. Wait another 10 seconds and repeat Ben's command from step 6 (`"admitted":true`), then from
+   step 5 (now he gets a `bookingId`).
+
+If a command says `position` is gone and `admitted` is `true` sooner than you expected, the
+tick happened while you were typing. That is fine.
+
+Done with Part A: go to **Terminal 1** and press `Ctrl+C` to stop the app.
+
+### Part B: the 10,000-buyer spike
+
+This part compares two runs. Each run has the same three moves: (1) start the app in
+Terminal 1, (2) reset in Terminal 2, (3) run k6 in Terminal 2.
+
+**Run 1: no waiting room.**
+
+1. **Terminal 1.** Start the app normally, then wait for `Started TicketmasterApplication`:
+
+```bash
+./mvnw spring-boot:run
+```
+
+2. **Terminal 2.** Reset: all seats free, Redis empty.
 
 ```bash
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/reset.sql
@@ -93,19 +198,64 @@ docker compose exec -T postgres psql -U lab -d ticketmaster < load/reset.sql
 docker compose exec redis redis-cli FLUSHALL
 ```
 
-Without the waiting room (start the app normally, `./mvnw spring-boot:run`):
+3. **Terminal 2.** Send 10,000 buyers. It takes about a minute and prints a summary at the end:
 
 ```bash
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 -e QUEUE=0 grafana/k6 run - < load/spike.js
 ```
 
-With the waiting room (restart the app with `--queue.enabled=true --queue.admit-per-second=100`):
+In the summary, look at these lines:
+
+| Line | Means |
+| --- | --- |
+| `buyers_got_a_hold` | must be 20 |
+| `buyers_got_error` | buyers who got a timeout or a refused connection |
+| `booking_path_ms` | how long seat map + reserve took (p50, p95) |
+
+4. **Terminal 1.** Press `Ctrl+C` to stop the app.
+
+**Run 2: with the waiting room** (100 people let in per second).
+
+1. **Terminal 1.** Start the app, then wait for `Started TicketmasterApplication`:
+
+```bash
+./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=100"
+```
+
+2. **Terminal 2.** Reset again (the same two commands as in run 1).
+
+3. **Terminal 2.** Send 10,000 buyers through the queue. It takes about 90 seconds:
 
 ```bash
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 -e QUEUE=1 grafana/k6 run - < load/spike.js
 ```
 
-k6 needs memory for 10,000 virtual buyers. If your Mac struggles, add `-e BUYERS=5000`.
+Look at the same lines, plus `queue_wait_s` (seconds spent in line). Compare
+`booking_path_ms` and `buyers_got_error` with run 1.
+
+4. **Terminal 1.** `Ctrl+C`.
+
+k6 needs a lot of memory for 10,000 buyers. If your Mac struggles or k6 crashes, add
+`-e BUYERS=5000` to the k6 command.
+
+### When you are done
+
+**Terminal 2.** Stop Postgres and Redis and wipe their data:
+
+```bash
+docker compose down -v
+```
+
+### If something goes wrong
+
+| You see | Why | Fix |
+| --- | --- | --- |
+| `curl: (7) Failed to connect` | The app is not running | Start it in Terminal 1, wait for `Started` |
+| `404` on `/events/1/queue` | Old code: wrong branch | `git checkout step-06-waiting-room`, restart the app |
+| `403` on reserve | Waiting room is on and you were not let in | Join, then wait until `admitted` is `true` |
+| `release version 25 not supported` | Java is not 25 | See `java -version`; fix `JAVA_HOME` |
+| `no configuration file provided` | Not in the project folder | `cd ~/ticketmaster-lab` |
+| k6 shows `connection refused` for every request | App not running, or wrong `BASE_URL` | Check Terminal 1; on a Mac use `host.docker.internal` |
 
 ## Numbers
 

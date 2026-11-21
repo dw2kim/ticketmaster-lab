@@ -5,7 +5,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** Every second, let the next queue.admit-per-second people in, for every event with a queue. */
+/**
+ * Every tick (queue.tick, default 1 s), let the next queue.admit-per-second people in, for every
+ * event with a queue. A longer tick (e.g. 10s) makes the waiting visible when you try it by hand.
+ */
 @Component
 @ConditionalOnProperty(name = "queue.enabled", havingValue = "true")
 public class QueueAdmitter {

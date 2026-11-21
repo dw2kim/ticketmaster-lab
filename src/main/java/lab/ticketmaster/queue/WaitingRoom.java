@@ -31,15 +31,18 @@ public class WaitingRoom {
     private final StringRedisTemplate redis;
     private final boolean enabled;
     private final int admitPerTick;
+    private final Duration tick;
     private final Duration admittedFor;
 
     public WaitingRoom(StringRedisTemplate redis,
                        @Value("${queue.enabled}") boolean enabled,
                        @Value("${queue.admit-per-second}") int admitPerTick,
+                       @Value("${queue.tick:1s}") Duration tick,
                        @Value("${queue.admitted-for}") Duration admittedFor) {
         this.redis = redis;
         this.enabled = enabled;
         this.admitPerTick = admitPerTick;
+        this.tick = tick;
         this.admittedFor = admittedFor;
     }
 
@@ -67,10 +70,11 @@ public class WaitingRoom {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "not in the queue; join first");
         }
         long position = rank + 1;
-        return new Spot(false, position, (position + admitPerTick - 1) / admitPerTick);
+        long ticksToWait = (position + admitPerTick - 1) / admitPerTick; // round up
+        return new Spot(false, position, ticksToWait * tick.toSeconds());
     }
 
-    /** Let the next N people in. Called once per second by QueueAdmitter. */
+    /** Let the next N people in. Called once per tick (queue.tick, default 1 s) by QueueAdmitter. */
     public int admitNext(long eventId) {
         Set<TypedTuple<String>> next = redis.opsForZSet().popMin(queueKey(eventId), admitPerTick); // ZPOPMIN
         if (next == null) {
@@ -84,7 +88,8 @@ public class WaitingRoom {
     public void checkAdmitted(long eventId, String userId) {
         if (enabled && !isAdmitted(eventId, userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "waiting room is on: join the queue first (POST /events/" + eventId + "/queue)");
+                    "waiting room is on: you have not been let in yet (join with POST /events/"
+                            + eventId + "/queue, check with GET)");
         }
     }
 

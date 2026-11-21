@@ -44,7 +44,7 @@ class WaitingRoomTest {
     @Test
     void cannotReserveWithoutQueueing() throws Exception {
         reserve("ana", 1).andExpect(status().isForbidden())
-                .andExpect(r -> assertThat(r.getResolvedException().getMessage()).contains("join the queue"));
+                .andExpect(r -> assertThat(r.getResolvedException().getMessage()).contains("not been let in"));
     }
 
     @Test
@@ -52,7 +52,7 @@ class WaitingRoomTest {
         join("ana").andExpect(jsonPath("$.position").value(1));
         join("ben").andExpect(jsonPath("$.position").value(2));
         join("cara").andExpect(jsonPath("$.position").value(3))
-                .andExpect(jsonPath("$.estimatedWaitSeconds").value(2)); // 3rd, 2 per second
+                .andExpect(jsonPath("$.estimatedWaitSeconds").value(2 * 3600)); // 3rd, 2 per tick, tick = 1h
         join("ana").andExpect(jsonPath("$.position").value(1));        // joining again keeps your place
     }
 
