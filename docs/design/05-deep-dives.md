@@ -193,6 +193,12 @@ The lab does the Postgres options. Elasticsearch is a stretch goal.
 `pg_trgm` GIN index p95 ~245 ms (~275 req/s); full-text + GIN p95 ~102 ms (~800 req/s).
 Default full-text (ADR-0008). Repeated-search caching (section 6) not built.
 
+**Lab result (step 9):** Elasticsearch 9 as `search.strategy=elastic`, filled by a bulk
+reindex (100,002 events in 5.6 s), no CDC. Adds typo tolerance (`Sparows` -> Sparrows) and
+relevance ranking; not faster at this scale (542-615 vs 685-716 req/s, p95 ~105-121 ms vs
+~115 ms) and uses ~1 GB. The copy is stale until reindexed; when Elasticsearch is down,
+search falls back to Postgres full-text (ADR-0009).
+
 ---
 
 ## Section 6: Repeated search queries (step 8, proposed)

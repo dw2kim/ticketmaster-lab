@@ -13,3 +13,12 @@ services:
     command: ["redis-server", "--save", "", "--appendonly", "no"]   # memory only: a restart forgets all holds
     ports:
       - "6379:6379"
+
+  elasticsearch:               # step 9: search engine (a copy of the events, rebuilt from Postgres)
+    image: elasticsearch:9.1.5
+    environment:
+      discovery.type: single-node          # one server, no cluster
+      xpack.security.enabled: "false"      # lab only: no passwords, no TLS
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"    # keep it laptop-sized
+    ports:
+      - "9200:9200"
