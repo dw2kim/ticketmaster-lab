@@ -21,6 +21,7 @@ this same problem with childcare rules on top.
 | 7 | *(optional)* Fast reads: cache the event page | Compare with and without cache | Done: [`docs/steps/step-07-event-cache.md`](docs/steps/step-07-event-cache.md) |
 | 8 | *(optional)* Fast search: indexes and full-text | Beat 500 ms | Done: [`docs/steps/step-08-search.md`](docs/steps/step-08-search.md) |
 | 9 | *(stretch)* Search with Elasticsearch: typos, a copy that goes stale | Find `Sparows` | Done: [`docs/steps/step-09-elasticsearch.md`](docs/steps/step-09-elasticsearch.md) |
+| 10 | *(stretch)* Keep the search copy fresh: dual-write vs outbox | Stop Elasticsearch mid-change | Done: [`docs/steps/step-10-outbox.md`](docs/steps/step-10-outbox.md) |
 
 Each step: one idea, short notes in `docs/steps/`, and three "what to understand" bullets at the end.
 

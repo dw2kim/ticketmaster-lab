@@ -27,7 +27,7 @@ export const options = {
     editors: {
       executor: 'constant-arrival-rate', // a new rename every 200 ms, even while checkers wait
       rate: 5, timeUnit: '1s', duration: __ENV.DURATION || '60s',
-      preAllocatedVUs: 100, maxVUs: 600, gracefulStop: '120s',
+      preAllocatedVUs: 500, maxVUs: 800, gracefulStop: '120s',
     },
   },
   summaryTrendStats: ['p(50)', 'p(95)', 'max'],
