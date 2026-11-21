@@ -39,7 +39,7 @@ needs it. Prices and totals: tickets have `price_cents`; `bookings.total_cents` 
 
 `reserved` and `reserved_until` belong to the **implicit-expiry** hold. In the **Redis-lock**
 variant of step 5, tickets have only `available | booked`, and holds live in Redis
-(`ticket:{id}` -> userId, plus a sorted set `event:{id}:reserved` for the seat map). See
+(`ticket:{id}` -> userId, plus a sorted set `event:{id}:held` for the seat map). See
 `05-deep-dives.md` section 2.
 
 The seat map lives on the venue; the client draws it and colors each seat from that seat's
