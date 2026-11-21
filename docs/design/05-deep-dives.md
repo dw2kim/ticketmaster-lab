@@ -189,6 +189,10 @@ instead of SSE (ADR-0006).
 
 The lab does the Postgres options. Elasticsearch is a stretch goal.
 
+**Lab result (step 8):** 100,000 events, 50 users: `LIKE` p95 2.7 s (20 req/s); `LIKE` +
+`pg_trgm` GIN index p95 ~245 ms (~275 req/s); full-text + GIN p95 ~102 ms (~800 req/s).
+Default full-text (ADR-0008). Repeated-search caching (section 6) not built.
+
 ---
 
 ## Section 6: Repeated search queries (step 8, proposed)

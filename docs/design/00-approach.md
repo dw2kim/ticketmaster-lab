@@ -34,7 +34,7 @@ Rules we take from it:
 | 5b. Holds in Redis *(optional)* | Deep dive: reserving tickets (Redis lock with TTL), compared with step 5 | 05 section 2 |
 | 6. Flash sale and a waiting room | Deep dive: high-demand events (virtual waiting queue) | 05 section 4 |
 | 7. Fast reads | Deep dive: scaling the view API (cache) | 05 section 3 |
-| 8. Fast search *(proposed)* | Deep dive: low-latency search (indexes, full-text, caching) | 05 section 5, section 6 |
+| 8. Fast search | Deep dive: low-latency search (indexes, full-text, caching) | 05 section 5, section 6 |
 
 Steps 7-8 are new proposals that complete the design's deep dives; they are listed in the
 README as optional.

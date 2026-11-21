@@ -19,7 +19,7 @@ this same problem with childcare rules on top.
 | 5b | *(optional)* Holds in Redis (`SET NX EX`), compare with step 5 | Kill Redis mid-sale | Done: [`docs/steps/step-05b-redis-holds.md`](docs/steps/step-05b-redis-holds.md) |
 | 6 | Flash sale: 10,000 buyers and a waiting room | Run the spike | Done: [`docs/steps/step-06-waiting-room.md`](docs/steps/step-06-waiting-room.md) |
 | 7 | *(optional)* Fast reads: cache the event page | Compare with and without cache | Done: [`docs/steps/step-07-event-cache.md`](docs/steps/step-07-event-cache.md) |
-| 8 | *(optional)* Fast search: indexes and full-text | Beat 500 ms | Next |
+| 8 | *(optional)* Fast search: indexes and full-text | Beat 500 ms | Done: [`docs/steps/step-08-search.md`](docs/steps/step-08-search.md) |
 
 Each step: one idea, short notes in `docs/steps/`, and three "what to understand" bullets at the end.
 
