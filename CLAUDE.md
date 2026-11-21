@@ -89,7 +89,7 @@ Mirrors the design, scaled down to run on a laptop with Docker Compose:
 | Event / Search / Booking services | Packages in **one** Spring Boot app (separate services only if a step needs it) |
 | Stripe + webhook | Fake payment endpoint that calls our confirm webhook |
 | Virtual waiting queue | Redis sorted set + per-user admitted keys, inside the app, polling (step 6, ADR-0006) |
-| Elasticsearch + CDC | Postgres full-text search first; Elasticsearch only as a stretch step |
+| Elasticsearch + CDC | Postgres full-text search with a GIN index (step 8, ADR-0008); Elasticsearch only as a stretch step |
 | API gateway / load balancer / CDN | Out of scope; mentioned in notes only |
 
 **Application** ([ADR-0002](docs/decisions/0002-java-spring-boot.md)):
@@ -124,6 +124,7 @@ docker compose up -d          # Postgres 17 on :5432 (lab/lab/ticketmaster), Red
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1 --queue.tick=30s"   # waiting room, slow enough to watch
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--cache.seat-map-ttl=PT1S   # also cache the seat map (step 7)
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--cache.seat-map-ttl=PT1S --cache.lock-on-miss=true"   # + stampede lock
+./mvnw spring-boot:run -Dspring-boot.run.arguments=--search.strategy=like   # LIKE search instead of full-text (step 8)
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac
@@ -136,6 +137,9 @@ docker compose exec -T postgres psql -U lab -d ticketmaster < load/holds.sql   #
 docker compose exec redis redis-cli FLUSHALL                                    # forget all Redis holds and caches
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/view.js   # step 7: 200 viewers, 30 s
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/dbcalls.sql   # DB transactions so far (step 7)
+docker compose exec -T postgres psql -U lab -d ticketmaster < load/seed-events.sql   # +100,000 events (step 8)
+docker compose exec -T postgres psql -U lab -d ticketmaster < load/explain-search.sql   # how each search runs (step 8)
+docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/search.js   # step 8: 50 searchers, 30 s
 ```
 
 Tests start their own Postgres and Redis. Code lives in `src/main/java/lab/ticketmaster/{event,search,booking,queue}`; migrations in
