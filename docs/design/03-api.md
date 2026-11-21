@@ -26,6 +26,15 @@ POST /bookings/:eventId  ->  bookingId
 One call checks the tickets, takes payment and marks them sold. Its weakness: you can fill in
 payment details and only then find out the seat is gone.
 
+## Waiting room (step 6)
+
+```http
+POST /events/:eventId/queue   ->  { admitted, position, estimatedWaitSeconds }   # join (idempotent)
+GET  /events/:eventId/queue   ->  { admitted, position, estimatedWaitSeconds }   # poll
+```
+
+With `queue.enabled=true`, booking endpoints return 403 unless the user was admitted.
+
 ## Book: reserve then confirm (step 5)
 
 **What the lab built** (step 5): `POST /bookings/reserve` and `POST /bookings/{bookingId}/confirm`.

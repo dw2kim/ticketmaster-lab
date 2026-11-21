@@ -39,7 +39,10 @@ in Redis is an optimization or a short-lived hold, never the record of a sale.
 
 - Slow and small: one idea per step. **Never start the next step unless asked.**
 - Short chat messages. No long walkthroughs unless asked.
-- Daewon runs things himself; give the exact commands.
+- Daewon runs things himself; give the exact commands. In step notes, "How to run it" says
+  for every command which terminal (Terminal 1 = app, Terminal 2 = the rest), which folder
+  and branch, and what output to expect. Run the steps yourself first so the expected
+  output is real.
 - End every step with three bullets: "What to understand".
 - Step questions are **multiple choice** (A-D, one correct answer), never free-text. Each one
   has a folded `<details>` "Answer" that names the correct letter and says why the others are
@@ -88,7 +91,7 @@ Mirrors the design, scaled down to run on a laptop with Docker Compose:
 | Redis (ticket lock with TTL, event cache) | Redis 7 in Docker, memory only (from step 5b) |
 | Event / Search / Booking services | Packages in **one** Spring Boot app (separate services only if a step needs it) |
 | Stripe + webhook | Fake payment endpoint that calls our confirm webhook |
-| Virtual waiting queue | Redis-backed queue (step 6) |
+| Virtual waiting queue | Redis sorted set + per-user admitted keys, inside the app, polling (step 6, ADR-0006) |
 | Elasticsearch + CDC | Postgres full-text search first; Elasticsearch only as a stretch step |
 | API gateway / load balancer / CDN | Out of scope; mentioned in notes only |
 
@@ -120,16 +123,19 @@ docker compose up -d          # Postgres 17 on :5432 (lab/lab/ticketmaster), Red
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--booking.strategy=row-lock   # naive|row-lock|occ|conditional
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--booking.hold-duration=PT30S   # short holds (step 5)
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--booking.hold-store=redis --booking.hold-duration=PT30S"   # Redis holds (step 5b)
+./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=100"         # waiting room (step 6)
+./mvnw spring-boot:run "-Dspring-boot.run.arguments=--queue.enabled=true --queue.admit-per-second=1 --queue.tick=30s"   # waiting room, slow enough to watch
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac
 docker run --rm -i --network host grafana/k6 run - < load/buy.js                                   # Linux
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/reserve.js   # step 5 rush, Mac
+docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 -e QUEUE=1 grafana/k6 run - < load/spike.js   # step 6 spike (QUEUE=0 without)
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/count.sql   # promises vs seats
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/reset.sql   # all seats back on sale
 docker compose exec -T postgres psql -U lab -d ticketmaster < load/holds.sql   # held / expired / sold / free (step 5)
 docker compose exec redis redis-cli FLUSHALL                                    # forget all Redis holds (step 5b)
 ```
 
-Tests start their own Postgres and Redis. Code lives in `src/main/java/lab/ticketmaster/{event,search,booking}`; migrations in
+Tests start their own Postgres and Redis. Code lives in `src/main/java/lab/ticketmaster/{event,search,booking,queue}`; migrations in
 `src/main/resources/db/migration`.
