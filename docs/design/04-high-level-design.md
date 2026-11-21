@@ -10,7 +10,8 @@ Client -> API gateway (auth, rate limiting, routing) -> **Event Service** -> Pos
 ## 2. Search events
 
 Add a **Search Service**. Simplest version: query the events table with filters and
-`LIKE '%term%'`. It works, but it's slow at scale (see deep dives section 5).
+`LIKE '%term%'`. It works, but it's slow at scale (see deep dives section 5). Step 8
+switched the default to Postgres full-text search with a GIN index.
 
 ## 3. Book tickets
 
