@@ -6,6 +6,13 @@
 | [`steps/`](steps/) | One short note per lab step: what we did, the numbers, three things to understand. |
 | [`decisions/`](decisions/) | Short ADRs for choices between real alternatives: [0001 follow the design](decisions/0001-follow-hello-interview-design.md), [0002 Java + Spring Boot](decisions/0002-java-spring-boot.md), [0003 default booking strategy](decisions/0003-default-booking-strategy.md), [0004 holds with implicit expiry](decisions/0004-holds-implicit-expiry.md), [0005 default hold store](decisions/0005-default-hold-store.md), [0006 waiting room](decisions/0006-waiting-room.md), [0007 event page cache](decisions/0007-event-page-cache.md), [0008 search](decisions/0008-search.md), [0009 Elasticsearch](decisions/0009-elasticsearch.md), [0010 outbox](decisions/0010-outbox.md). |
 
+## Diagrams
+
+![The article's design vs this lab](design/diagrams/design-vs-lab.png)
+
+- [`design/diagrams/design-vs-lab.png`](design/diagrams/design-vs-lab.png): the article's full design, coloured by what the lab built, simplified or skipped.
+- [`design/diagrams/system-components.png`](design/diagrams/system-components.png): what runs in this repo today.
+
 ## Design, in reading order
 
 0. [Approach](design/00-approach.md): the framework, and which lab step covers which part
