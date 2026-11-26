@@ -1,8 +1,12 @@
 package lab.ticketmaster.search;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,14 +23,12 @@ import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Step 9: copy every event from Postgres into Elasticsearch ("bulk reindex").
+ * Copies events from Postgres into Elasticsearch.
  *
  * Postgres stays the source of truth. Elasticsearch holds a COPY that we can always throw away
- * and rebuild. That is the only sync in the small version of step 9: events that change after
- * a reindex are missing (or stale) in search until the next reindex. Real systems keep the copy
- * fresh with an outbox table or CDC (docs/design/05-deep-dives.md section 5).
- *
- * Runs at startup when search.reindex-on-start=true.
+ * and rebuild.
+ *   step 9   reindexAll(): copy everything (at startup with search.reindex-on-start=true)
+ *   step 10  upsert(ids): copy just these events (called by the OutboxWorker and dual-write)
  */
 @Component
 public class ElasticIndexer implements ApplicationRunner {
@@ -67,8 +69,8 @@ public class ElasticIndexer implements ApplicationRunner {
         } catch (HttpClientErrorException.NotFound noIndexYet) {
             // first run: nothing to delete
         }
-        String mapping = new ClassPathResource("elasticsearch/events-index.json").getContentAsString(
-                java.nio.charset.StandardCharsets.UTF_8);
+        String mapping = new ClassPathResource("elasticsearch/events-index.json")
+                .getContentAsString(StandardCharsets.UTF_8);
         elastic.put().uri("/events").contentType(MediaType.APPLICATION_JSON).body(mapping)
                 .retrieve().toBodilessEntity();
 
@@ -84,15 +86,12 @@ public class ElasticIndexer implements ApplicationRunner {
                     """)
                     .param("lastId", lastId)
                     .param("batch", BATCH)
-                    .query((rs, n) -> new Doc(rs.getLong("id"), rs.getString("name"),
-                            rs.getString("description"), rs.getString("performer_name"),
-                            rs.getString("venue_name"), rs.getObject("starts_at", OffsetDateTime.class)))
+                    .query(ElasticIndexer::doc)
                     .list();
             if (batch.isEmpty()) {
                 break;
             }
-            elastic.post().uri("/_bulk").contentType(MediaType.parseMediaType("application/x-ndjson"))
-                    .body(bulkBody(batch)).retrieve().toBodilessEntity();
+            sendBulk(bulkLines(batch, Set.of()));
             total += batch.size();
             lastId = batch.getLast().id();
         }
@@ -102,18 +101,69 @@ public class ElasticIndexer implements ApplicationRunner {
     }
 
     /**
+     * Step 10: copy the CURRENT state of these events from Postgres. Sends the whole document,
+     * so sending the same event twice gives the same result (idempotent). An id that no longer
+     * exists in Postgres is deleted from the copy. Throws if Elasticsearch did not take it all.
+     */
+    public void upsert(Collection<Long> ids) {
+        if (ids.isEmpty()) {
+            return;
+        }
+        List<Doc> docs = db.sql("""
+                SELECT id, name, description, performer_name, venue_name, starts_at
+                  FROM events
+                 WHERE id IN (:ids)
+                """)
+                .param("ids", ids)
+                .query(ElasticIndexer::doc)
+                .list();
+        Set<Long> found = docs.stream().map(Doc::id).collect(Collectors.toSet());
+        Set<Long> gone = ids.stream().filter(id -> !found.contains(id)).collect(Collectors.toSet());
+        sendBulk(bulkLines(docs, gone));
+    }
+
+    /**
      * The _bulk API takes "newline-delimited JSON": an action line, then the document, per event.
      *   {"index":{"_index":"events","_id":"5"}}
      *   {"id":5,"name":"Golden Sparrows: ...", ...}
+     *   {"delete":{"_index":"events","_id":"7"}}
      */
-    private String bulkBody(List<Doc> batch) {
+    private String bulkLines(List<Doc> docs, Set<Long> deletes) {
         StringBuilder body = new StringBuilder();
-        for (Doc doc : batch) {
+        for (Doc doc : docs) {
             body.append(json.writeValueAsString(Map.of("index", Map.of("_index", "events", "_id", doc.id()))))
                 .append('\n')
                 .append(json.writeValueAsString(doc))
                 .append('\n');
         }
+        for (Long id : deletes) {
+            body.append(json.writeValueAsString(Map.of("delete", Map.of("_index", "events", "_id", id))))
+                .append('\n');
+        }
         return body.toString();
+    }
+
+    /**
+     * Careful: _bulk answers HTTP 200 even when some documents failed. The body says
+     * "errors": true in that case, so we must read it, or we would think the copy is up to date.
+     */
+    private void sendBulk(String lines) {
+        if (lines.isEmpty()) {
+            return;
+        }
+        Map<?, ?> response = elastic.post().uri("/_bulk")
+                .contentType(MediaType.parseMediaType("application/x-ndjson"))
+                .body(lines)
+                .retrieve()
+                .body(Map.class);
+        if (response != null && Boolean.TRUE.equals(response.get("errors"))) {
+            throw new IllegalStateException("Elasticsearch rejected part of a bulk request");
+        }
+    }
+
+    private static Doc doc(java.sql.ResultSet rs, int n) throws java.sql.SQLException {
+        return new Doc(rs.getLong("id"), rs.getString("name"), rs.getString("description"),
+                rs.getString("performer_name"), rs.getString("venue_name"),
+                rs.getObject("starts_at", OffsetDateTime.class));
     }
 }

@@ -199,6 +199,11 @@ relevance ranking; not faster at this scale (542-615 vs 685-716 req/s, p95 ~105-
 ~115 ms) and uses ~1 GB. The copy is stale until reindexed; when Elasticsearch is down,
 search falls back to Postgres full-text (ADR-0009).
 
+**Lab result (step 10):** events can change (`PUT /events/{id}`). A transactional outbox
+(change + note in one transaction, a worker delivers with `FOR UPDATE SKIP LOCKED`) keeps the
+copy fresh: lag p50 ~0.8 s; with Elasticsearch stopped 20 s, 0 of 253 changes lost (lag up to
+39 s). Dual-write for comparison: lost 143 of 251 in the same outage (ADR-0010). No CDC.
+
 ---
 
 ## Section 6: Repeated search queries (step 8, proposed)

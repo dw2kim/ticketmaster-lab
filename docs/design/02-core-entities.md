@@ -33,6 +33,9 @@ bookings    (id, user_id, status,  -- in_progress | confirmed | expired | cancel
 
 Columns marked with a step are added in that step, not up front.
 
+Step 10 adds `outbox (id, event_id, created_at, sent_at)`: one note per event change, written
+in the same transaction as the change, delivered to Elasticsearch by a worker.
+
 **Lab simplification (step 2):** `venues` and `performers` are not separate tables yet;
 `events` has `venue_name` and `performer_name` text columns. Split them out only if a step
 needs it. Prices and totals: tickets have `price_cents`; `bookings.total_cents` comes later.

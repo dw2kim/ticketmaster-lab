@@ -26,6 +26,15 @@ POST /bookings/:eventId  ->  bookingId
 One call checks the tickets, takes payment and marks them sold. Its weakness: you can fill in
 payment details and only then find out the seat is gone.
 
+## Change an event (step 10)
+
+```http
+PUT /events/:eventId   { "name": "..." }   ->  { "name": "..." }
+```
+
+Admin-like and outside the usual scope: it exists only to create changes for the search copy to
+follow (`search.sync`: none | dual-write | outbox).
+
 ## Waiting room (step 6)
 
 ```http
