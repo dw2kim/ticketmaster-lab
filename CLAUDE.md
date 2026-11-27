@@ -77,7 +77,13 @@ booking, availability for viewing/search; surviving a popular-event spike.
 
 Out of scope unless a step says otherwise: user's booking history, admin event creation
 (we seed data instead), dynamic pricing, real payments (a fake payment step stands in for
-Stripe), GDPR, backups, CI/CD, multi-region.
+Stripe), GDPR, backups, multi-region.
+
+Deploy (not a step, see [`docs/deploy.md`](docs/deploy.md), ADR-0011): Render runs the app
+from the `Dockerfile` with managed Postgres and Redis (`render.yaml`), no Elasticsearch.
+GitHub Actions (`.github/workflows/ci.yml`) runs the tests and the image build on every PR;
+keep it green. Config comes from env vars (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
+`DB_PASSWORD`, `REDIS_URL`, `PORT`) with laptop defaults. Never run load tests against Render.
 
 ## Tech stack
 
@@ -130,6 +136,7 @@ docker compose up -d          # Postgres 17 :5432 (lab/lab/ticketmaster), Redis 
 ./mvnw spring-boot:run "-Dspring-boot.run.arguments=--search.strategy=elastic --search.sync=outbox --search.reindex-on-start=true"   # outbox sync (step 10)
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
+docker build -t ticketmaster-lab .   # the image Render runs (docs/deploy.md)
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac
 docker run --rm -i --network host grafana/k6 run - < load/buy.js                                   # Linux
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/reserve.js   # step 5 rush, Mac

@@ -25,6 +25,11 @@ this same problem with childcare rules on top.
 
 Each step: one idea, short notes in `docs/steps/`, and three "what to understand" bullets at the end.
 
+## Deploy
+
+Runs on Render (app + managed Postgres + managed Redis, no Elasticsearch), with GitHub Actions
+running the tests on every PR. Guide: [`docs/deploy.md`](docs/deploy.md).
+
 ## Design
 
 ![The article's design vs this lab](docs/design/diagrams/design-vs-lab.png)

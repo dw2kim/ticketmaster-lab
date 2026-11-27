@@ -1,0 +1,7 @@
+# Keep the Docker build small and free of local junk.
+target
+.git
+.idea
+*.iml
+docs
+load

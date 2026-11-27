@@ -4,7 +4,8 @@
 | --- | --- |
 | [`design/`](design/) | The system design we are implementing, following the Hello Interview Ticketmaster breakdown. Source of truth. |
 | [`steps/`](steps/) | One short note per lab step: what we did, the numbers, three things to understand. |
-| [`decisions/`](decisions/) | Short ADRs for choices between real alternatives: [0001 follow the design](decisions/0001-follow-hello-interview-design.md), [0002 Java + Spring Boot](decisions/0002-java-spring-boot.md), [0003 default booking strategy](decisions/0003-default-booking-strategy.md), [0004 holds with implicit expiry](decisions/0004-holds-implicit-expiry.md), [0005 default hold store](decisions/0005-default-hold-store.md), [0006 waiting room](decisions/0006-waiting-room.md), [0007 event page cache](decisions/0007-event-page-cache.md), [0008 search](decisions/0008-search.md), [0009 Elasticsearch](decisions/0009-elasticsearch.md), [0010 outbox](decisions/0010-outbox.md). |
+| [`decisions/`](decisions/) | Short ADRs for choices between real alternatives: [0001 follow the design](decisions/0001-follow-hello-interview-design.md), [0002 Java + Spring Boot](decisions/0002-java-spring-boot.md), [0003 default booking strategy](decisions/0003-default-booking-strategy.md), [0004 holds with implicit expiry](decisions/0004-holds-implicit-expiry.md), [0005 default hold store](decisions/0005-default-hold-store.md), [0006 waiting room](decisions/0006-waiting-room.md), [0007 event page cache](decisions/0007-event-page-cache.md), [0008 search](decisions/0008-search.md), [0009 Elasticsearch](decisions/0009-elasticsearch.md), [0010 outbox](decisions/0010-outbox.md), [0011 deploy on Render](decisions/0011-deploy-on-render.md). |
+| [`deploy.md`](deploy.md) | Put the app, Postgres and Redis on Render; CI with GitHub Actions. |
 
 ## Diagrams
 

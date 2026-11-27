@@ -13,6 +13,9 @@ final class ElasticTestContainer {
             .withEnv("discovery.type", "single-node")
             .withEnv("xpack.security.enabled", "false")
             .withEnv("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+            // A nearly full disk (a laptop, a CI runner) would stop Elasticsearch from placing
+            // the index ("disk watermark") and every test would time out. Fine for a throwaway test copy.
+            .withEnv("cluster.routing.allocation.disk.threshold_enabled", "false")
             .withExposedPorts(9200)
             .waitingFor(Wait.forHttp("/").forStatusCode(200).withStartupTimeout(Duration.ofMinutes(3)));
 
