@@ -27,6 +27,8 @@ Each step: one idea, short notes in `docs/steps/`, and three "what to understand
 
 ## Design
 
+![The article's design vs this lab](docs/design/diagrams/design-vs-lab.png)
+
 The lab implements the [Hello Interview Ticketmaster design](https://www.hellointerview.com/learn/system-design/problem-breakdowns/ticketmaster),
 built in order: requirements -> entities -> API -> high-level design -> deep dives.
 Start at [`docs/README.md`](docs/README.md); the step-to-design mapping is in

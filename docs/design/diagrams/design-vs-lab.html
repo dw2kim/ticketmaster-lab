@@ -1,0 +1,139 @@
+<!doctype html>
+<!-- Source of design-vs-lab.png. Render: see docs/design/diagrams/README.md -->
+<html><head><meta charset="utf-8"><style>
+body{margin:0;background:#fff}
+text{font-family:-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;fill:#1f2937}
+.t{font-size:15px;font-weight:700}.s{font-size:12.5px}.m{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.h{font-size:20px;font-weight:700}.small{font-size:11px;fill:#6b7280}
+.lab{font-size:12px;fill:#374151}
+</style></head><body>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860">
+<defs>
+  <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+</defs>
+<rect width="1200" height="860" fill="#ffffff"/>
+<text x="30" y="40" class="h">Ticketmaster: the article's design vs this lab</text>
+<text x="30" y="62" class="small">Boxes follow the Hello Interview final design. The colour says what the lab did with each part; "lab:" says how. Numbers are lab steps.</text>
+
+<!-- legend -->
+<g transform="translate(30,78)">
+ <rect width="18" height="13" rx="3" fill="#ecfdf5" stroke="#059669" stroke-width="2"/><text x="24" y="11" class="s">built as designed</text>
+ <rect x="170" width="18" height="13" rx="3" fill="#fffbeb" stroke="#d97706" stroke-width="2"/><text x="194" y="11" class="s">built, simpler</text>
+ <rect x="320" width="18" height="13" rx="3" fill="#f9fafb" stroke="#9ca3af" stroke-width="2" stroke-dasharray="4 3"/><text x="344" y="11" class="s">not built (notes only)</text>
+ <rect x="510" width="18" height="13" rx="3" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="3 3"/><text x="534" y="11" class="s">in the lab: all four services are ONE Spring Boot app (packages)</text>
+</g>
+
+<!-- Row A: client, CDN, gateway -->
+<rect x="30" y="110" width="200" height="70" rx="10" fill="#f1f5f9" stroke="#64748b"/>
+<text x="130" y="138" text-anchor="middle" class="t">Client</text>
+<text x="130" y="158" text-anchor="middle" class="lab">lab: curl and k6</text>
+
+<rect x="290" y="110" width="220" height="70" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="400" y="138" text-anchor="middle" class="t" style="fill:#6b7280">CDN</text>
+<text x="400" y="158" text-anchor="middle" class="lab">lab: none</text>
+
+<rect x="570" y="110" width="600" height="70" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="870" y="136" text-anchor="middle" class="t" style="fill:#6b7280">API gateway + load balancer (auth, rate limiting, routing)</text>
+<text x="870" y="158" text-anchor="middle" class="lab">lab: none; the client calls one app on :8080, no login, one instance</text>
+
+<line x1="230" y1="145" x2="288" y2="145" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+<line x1="510" y1="145" x2="568" y2="145" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+<!-- bus from gateway to services -->
+<line x1="870" y1="180" x2="870" y2="210" stroke="#475569" stroke-width="2"/>
+<line x1="165" y1="210" x2="1035" y2="210" stroke="#475569" stroke-width="2"/>
+<line x1="165" y1="210" x2="165" y2="238" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+<line x1="455" y1="210" x2="455" y2="238" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+<line x1="1035" y1="210" x2="1035" y2="238" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+<text x="1043" y="204" class="small">book</text>
+<text x="173" y="204" class="small">view</text>
+<text x="463" y="204" class="small">search</text>
+
+<!-- Row B: services (one app in the lab) -->
+<rect x="20" y="226" width="1160" height="130" rx="14" fill="none" stroke="#2563eb" stroke-width="1.5" stroke-dasharray="3 3"/>
+
+<rect x="30" y="240" width="270" height="96" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+<text x="46" y="264" class="t">Event service</text>
+<text x="46" y="284" class="lab">lab: package event</text>
+<text x="46" y="302" class="lab">GET /events/{id}  (2)</text>
+<text x="46" y="320" class="lab">PUT /events/{id}  (10)</text>
+
+<rect x="320" y="240" width="270" height="96" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+<text x="336" y="264" class="t">Search service</text>
+<text x="336" y="284" class="lab">lab: package search</text>
+<text x="336" y="302" class="lab">LIKE (2), Postgres full-text (8),</text>
+<text x="336" y="320" class="lab">Elasticsearch (9)</text>
+
+<rect x="610" y="240" width="270" height="96" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+<text x="626" y="264" class="t">Booking service</text>
+<text x="626" y="284" class="lab">lab: package booking</text>
+<text x="626" y="302" class="lab">reserve, then confirm (5)</text>
+<text x="626" y="320" class="lab">DB guard: conditional UPDATE (4)</text>
+
+<rect x="900" y="240" width="270" height="96" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+<text x="916" y="264" class="t">Virtual waiting queue</text>
+<text x="916" y="284" class="lab">lab: Redis sorted set, inside the app (6)</text>
+<text x="916" y="302" class="lab">clients poll; the design pushes</text>
+<text x="916" y="320" class="lab">with SSE / WebSocket</text>
+<line x1="900" y1="300" x2="882" y2="300" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+<!-- Row C -->
+<rect x="30" y="400" width="200" height="96" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<text x="46" y="424" class="t">Redis: event cache</text>
+<text x="46" y="444" class="lab">lab: @Cacheable, details 1 h,</text>
+<text x="46" y="462" class="lab">seat map optional (7)</text>
+<line x1="130" y1="336" x2="130" y2="398" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+<rect x="320" y="400" width="200" height="96" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<text x="336" y="424" class="t">Elasticsearch</text>
+<text x="336" y="444" class="lab">lab: typo-tolerant search,</text>
+<text x="336" y="462" class="lab">a copy of events (9)</text>
+<line x1="420" y1="336" x2="420" y2="398" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+<rect x="610" y="400" width="200" height="96" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<text x="626" y="424" class="t">Redis: ticket lock</text>
+<text x="626" y="444" class="lab">lab: SET NX EX, TTL (5b)</text>
+<text x="626" y="462" class="lab">default: Postgres holds (5)</text>
+<line x1="710" y1="336" x2="710" y2="398" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+<rect x="900" y="400" width="270" height="96" rx="10" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+<text x="916" y="424" class="t">Stripe + webhook</text>
+<text x="916" y="444" class="lab">lab: fake payment inside</text>
+<text x="916" y="462" class="lab">POST /bookings/{id}/confirm (5)</text>
+<path d="M 860 336 V 368 H 1035 V 398" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+<!-- Row D -->
+<rect x="30" y="580" width="470" height="110" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+<text x="46" y="606" class="t">PostgreSQL (source of truth)</text>
+<text x="46" y="628" class="lab">lab: events, tickets, bookings, outbox (2-10)</text>
+<text x="46" y="648" class="lab">no double sale: conditional UPDATE (4)</text>
+<text x="46" y="668" class="lab">full-text GIN index (8)</text>
+
+<rect x="560" y="580" width="250" height="110" rx="12" fill="#fffbeb" stroke="#d97706" stroke-width="2"/>
+<text x="576" y="606" class="t">CDC to Elasticsearch</text>
+<text x="576" y="628" class="lab">lab: transactional outbox</text>
+<text x="576" y="648" class="lab">+ OutboxWorker (10)</text>
+<text x="576" y="668" class="lab">design: Debezium / Kafka</text>
+<line x1="500" y1="635" x2="558" y2="635" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+<path d="M 575 580 V 448 H 522" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+<!-- event & booking to postgres -->
+<path d="M 265 336 V 578" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+<path d="M 845 336 V 703 H 470 V 692" fill="none" stroke="#475569" stroke-width="2" marker-end="url(#a)"/>
+
+<!-- extras -->
+<rect x="860" y="580" width="310" height="110" rx="12" fill="#eff6ff" stroke="#2563eb"/>
+<text x="876" y="604" class="t" style="fill:#1d4ed8">Extra in the lab</text>
+<text x="876" y="624" class="lab">naive booking, broken on purpose (2-3)</text>
+<text x="876" y="642" class="lab">row lock vs OCC vs conditional (4)</text>
+<text x="876" y="660" class="lab">trigram index for LIKE (8)</text>
+<text x="876" y="678" class="lab">dual-write, to show what it loses (10)</text>
+
+<!-- numbers -->
+<rect x="30" y="716" width="1140" height="118" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+<text x="46" y="740" class="t">What the lab measured</text>
+<text x="46" y="762" class="lab">(3) 200 buyers, 20 seats: naive sold 28-42.  (4) every fix sold exactly 20.  (5) 200 reservers: exactly 20 holds; a hold expires with no job.</text>
+<text x="46" y="782" class="lab">(6) 10,000 buyers: booking p95 30 s -> 4-9 ms behind the waiting room.  (7) cache: 2 -> 0.01 DB calls per request, p95 155 -> 72 ms.</text>
+<text x="46" y="802" class="lab">(8) search on 100,000 events: LIKE p95 2.7 s -> full-text 102 ms.  (9) Elasticsearch: finds typos, not faster here, +1 GB memory.</text>
+<text x="46" y="822" class="lab">(10) Elasticsearch down 20 s: dual-write lost 143 of 251 changes, the outbox lost 0 (they arrived up to 39 s late).</text>
+</svg></body></html>

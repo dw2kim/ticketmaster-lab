@@ -31,6 +31,9 @@ fix this.
 
 ## Final design (after the deep dives)
 
+Pictures: [the article's design vs this lab](diagrams/design-vs-lab.png) and
+[what runs in this repo](diagrams/system-components.png).
+
 ```mermaid
 flowchart LR
   C[Client] --> CDN
