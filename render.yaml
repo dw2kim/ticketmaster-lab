@@ -1,0 +1,47 @@
+# Render "Blueprint": the whole cloud setup in one file (infrastructure as code).
+# Render reads this from the repo and creates or updates everything below.
+# Guide: docs/deploy.md
+#
+#   ticketmaster-app     the Spring Boot app, built from the Dockerfile, public over HTTPS
+#   ticketmaster-db      managed PostgreSQL (backups, updates done by Render)
+#   ticketmaster-redis   managed Redis ("Key Value"), reachable only from inside Render
+#
+# Elasticsearch is left out on purpose: search uses Postgres full-text (the default, step 8).
+# Plan names and prices change; check https://render.com/pricing before you apply this.
+
+services:
+  - type: web
+    name: ticketmaster-app
+    runtime: docker
+    plan: starter
+    region: oregon
+    healthCheckPath: /actuator/health
+    autoDeploy: true            # every push to the main branch deploys
+    envVars:
+      - key: DB_HOST
+        fromDatabase: { name: ticketmaster-db, property: host }
+      - key: DB_PORT
+        fromDatabase: { name: ticketmaster-db, property: port }
+      - key: DB_NAME
+        fromDatabase: { name: ticketmaster-db, property: database }
+      - key: DB_USER
+        fromDatabase: { name: ticketmaster-db, property: user }
+      - key: DB_PASSWORD
+        fromDatabase: { name: ticketmaster-db, property: password }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: ticketmaster-redis, property: connectionString }
+
+  - type: keyvalue
+    name: ticketmaster-redis
+    plan: starter
+    region: oregon
+    ipAllowList: []             # empty = no access from the internet, only from the app
+    maxmemoryPolicy: noeviction # holds and the waiting room must not be dropped to save memory
+
+databases:
+  - name: ticketmaster-db
+    databaseName: ticketmaster
+    user: ticketmaster
+    plan: basic-256mb
+    region: oregon
+    ipAllowList: []             # empty = no access from the internet, only from the app
