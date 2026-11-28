@@ -57,7 +57,7 @@ exactly what it shows there, and paid plans start billing at once.
 
 ### 1. Check the image builds on your laptop (optional)
 
-Terminal 2, folder `ticketmaster-lab`, branch `main` (after this PR is merged):
+Terminal 2, folder `ticketmaster-lab`, branch `main`:
 
 ```bash
 git pull
@@ -88,29 +88,106 @@ Expected: `{"groups":["liveness","readiness"],"status":"UP"}`. Stop Terminal 1 w
 ### 2. Create everything on Render (browser, one time)
 
 1. Sign up at <https://dashboard.render.com> with your GitHub account.
-2. Click **New** -> **Blueprint**.
-3. Pick the repo `ticketmaster-lab`, branch `main`. Render finds `render.yaml`.
-4. It lists three things: `ticketmaster-app`, `ticketmaster-db`, `ticketmaster-redis`.
-   Check that every line says **Free**, then click **Apply**.
-5. Wait. Postgres and Redis take ~2 minutes; the app's first Docker build ~5-8 minutes.
-   Open `ticketmaster-app` -> **Logs**. Expected near the end:
-   `Successfully applied 7 migrations` and `Tomcat started on port 10000`, then
-   **Live** at the top.
-6. Copy the app's URL at the top of its page, like `https://ticketmaster-app-xxxx.onrender.com`.
+2. Click **+ New** (top right) -> **Blueprint**. Not the cards on the "Create a new ..."
+   page: each card makes only one piece by hand.
+3. Pick the repo `ticketmaster-lab`. On the next page:
+   - **Blueprint Name**: `ticketmaster-lab` (required; until it is filled the page says
+     "A Blueprint file was found, but there were a few issues")
+   - **Branch**: `main`, **Blueprint Path**: leave `render.yaml`
+4. It lists "Create database ticketmaster-db", "Create Key Value ticketmaster-redis",
+   "Create web service ticketmaster-app". **This page does not show the plans.** The plans
+   come from `render.yaml` (all `free`). Click **Deploy Blueprint**.
+5. The sync page now shows each one with its plan in brackets, e.g.
+   `Create database ticketmaster-db (Free)`. **If any says a paid plan** (e.g.
+   `(Basic-256mb)`, `(Starter)`), delete it right away (see "Delete everything" below).
+6. Wait about 5 minutes. The Dashboard then shows (our run, 2026-11-28):
+
+```
+ticketmaster-app     Deployed    Docker         Oregon
+ticketmaster-db      Available   PostgreSQL 18  Oregon
+ticketmaster-redis   Available   Valkey 8       Oregon
+```
+
+   Render picks the versions: PostgreSQL 18 (we use 17 locally) and Valkey 8 (an open-source
+   fork of Redis, same commands). The app and all tests work on both.
+7. Open `ticketmaster-app` and copy the URL at the top, like
+   `https://ticketmaster-app-xxxx.onrender.com`.
 
 ### 3. Check it from your laptop
 
-Terminal 2, any folder. Replace the URL with yours:
+Terminal 2, any folder. Replace the URL with yours. These outputs are from our run.
+On the free plan the app sleeps when idle: the first call may take about a minute.
 
 ```bash
 APP=https://ticketmaster-app-xxxx.onrender.com
+```
+
+```bash
 curl -s $APP/actuator/health
+```
+
+```
+{"groups":["liveness","readiness"],"status":"UP"}
+```
+
+```bash
 curl -s $APP/events/1
+```
+
+```
+{"id":1,"name":"Lab Concert","description":"The one concert everybody wants.","venueName":"Small Hall","performerName":"The Racers","startsAt":"2026-12-31T20:00:00Z","tickets":[{"id":1,"seat":"A1","priceCents":5000,"status":"available"}, ... 20 seats ...]}
+```
+
+```bash
 curl -s "$APP/events/search?keyword=jazz"
 ```
 
-Expected: `"status":"UP"`, then the Lab Concert with its 20 seats, then Quiet Jazz Night.
-The database starts empty; Flyway created the tables and the two seed events on first start.
+```
+[{"id":2,"name":"Quiet Jazz Night","venueName":"Corner Cafe","startsAt":"2027-01-15T19:00:00Z"}]
+```
+
+The database started empty; Flyway created the tables and the two seed events on first start.
+
+Now the invariant, in the cloud. Ana holds seat A1:
+
+```bash
+curl -s -X POST $APP/bookings/reserve -H 'X-User-Id: ana' -H 'Content-Type: application/json' -d '{"eventId":1,"ticketIds":[1]}'
+```
+
+```
+{"bookingId":1,"expiresAt":"2026-11-28T15:52:44.567679Z"}
+```
+
+Ben tries the same seat:
+
+```bash
+curl -i -X POST $APP/bookings/reserve -H 'X-User-Id: ben' -H 'Content-Type: application/json' -d '{"eventId":1,"ticketIds":[1]}'
+```
+
+```
+HTTP/2 409
+server: cloudflare
+...
+{"timestamp":"2026-11-28T15:42:53.462Z","status":409,"error":"Conflict","message":"seat already held or booked","path":"/bookings/reserve"}
+```
+
+Ana pays:
+
+```bash
+curl -i -X POST $APP/bookings/1/confirm -H 'X-User-Id: ana'
+```
+
+```
+HTTP/2 200
+...
+{"bookingId":1,"status":"confirmed"}
+```
+
+`curl -s $APP/events/1` now shows `{"id":1,"seat":"A1","priceCents":5000,"status":"booked"}`
+and the other 19 seats `available`. (Pipe it to `jq` to read it more easily.)
+
+`server: cloudflare` in the headers: Render puts Cloudflare in front of the app, which is
+where the free HTTPS comes from.
 
 ### 4. Deploy a change (every time after)
 
@@ -120,6 +197,16 @@ The database starts empty; Flyway created the tables and the two seed events on 
    version keeps serving until the new one passes `/actuator/health`: no downtime.
 
 Roll back: app page -> **Events** -> pick an older deploy -> **Rollback**.
+
+### 5. Delete everything
+
+Disconnecting the Blueprint does **not** delete what it created. In this order:
+
+1. Blueprints -> `ticketmaster-lab` -> **Settings** -> **Disconnect Blueprint** (so a push to
+   `main` can not create anything again).
+2. For each of `ticketmaster-app`, `ticketmaster-redis`, `ticketmaster-db`: open it ->
+   **Settings** -> bottom -> **Delete**, type the name.
+3. The Dashboard says "You haven't created any services yet." Check **Billing** too.
 
 ## Security: read before you share the URL
 
