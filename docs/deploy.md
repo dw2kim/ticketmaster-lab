@@ -3,6 +3,7 @@
 Put the app on the internet: the Spring Boot app, a managed Postgres and a managed Redis,
 all on [Render](https://render.com). Search uses Postgres full-text (step 8), so
 Elasticsearch is not needed. Why Render: [ADR-0011](decisions/0011-deploy-on-render.md).
+The AWS version of the same setup: [deploy-aws.md](deploy-aws.md).
 
 ## The picture
 

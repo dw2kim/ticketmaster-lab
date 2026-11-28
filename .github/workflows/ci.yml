@@ -27,3 +27,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t ticketmaster-lab .
+
+  terraform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra/aws
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      # Checks the AWS files are formatted and valid. Needs no AWS account: nothing is created.
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate

@@ -84,6 +84,9 @@ from the `Dockerfile` with managed Postgres and Redis (`render.yaml`), no Elasti
 GitHub Actions (`.github/workflows/ci.yml`) runs the tests and the image build on every PR;
 keep it green. Config comes from env vars (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
 `DB_PASSWORD`, `REDIS_URL`, `PORT`) with laptop defaults. Never run load tests against Render.
+AWS too ([`docs/deploy-aws.md`](docs/deploy-aws.md), ADR-0012): Terraform in `infra/aws/` (ECS
+Fargate ARM, RDS, ElastiCache, ALB), same image and env vars. Never commit Terraform state;
+run `terraform fmt` and `terraform validate` on changes.
 
 ## Tech stack
 
@@ -137,6 +140,7 @@ docker compose up -d          # Postgres 17 :5432 (lab/lab/ticketmaster), Redis 
 ./mvnw test                   # tests; start their own Postgres via Testcontainers
 docker compose down -v        # stop and wipe the database
 docker build -t ticketmaster-lab .   # the image Render runs (docs/deploy.md)
+terraform -chdir=infra/aws apply     # AWS (docs/deploy-aws.md); terraform -chdir=infra/aws destroy to stop the bill
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/buy.js   # Mac
 docker run --rm -i --network host grafana/k6 run - < load/buy.js                                   # Linux
 docker run --rm -i -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run - < load/reserve.js   # step 5 rush, Mac

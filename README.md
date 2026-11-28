@@ -29,6 +29,7 @@ Each step: one idea, short notes in `docs/steps/`, and three "what to understand
 
 Runs on Render (app + managed Postgres + managed Redis, no Elasticsearch), with GitHub Actions
 running the tests on every PR. Guide: [`docs/deploy.md`](docs/deploy.md).
+Or AWS (ECS Fargate + RDS + ElastiCache + ALB) with Terraform: [`docs/deploy-aws.md`](docs/deploy-aws.md).
 
 ## Design
 

@@ -3,3 +3,7 @@ target/
 .idea/
 *.iml
 .vscode/
+# Terraform: downloaded providers and local state (state holds resource details; never commit it)
+.terraform/
+*.tfstate
+*.tfstate.*
