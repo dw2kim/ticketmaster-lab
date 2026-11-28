@@ -36,17 +36,23 @@ out on purpose: the app keeps working without it (cache fallback, step 7).
 
 ## Cost (check https://render.com/pricing, plans change)
 
-| Piece | Plan in `render.yaml` | About |
+`render.yaml` uses the **free** plans: $0. The catches:
+
+- the app sleeps after 15 minutes idle; the next request takes about a minute to wake it
+- free Postgres is deleted after about 30 days (one free database per account)
+- free Redis keeps nothing on restart (fine: it only has holds, cache and the queue)
+
+Fine for a demo. For an always-on deploy, change the `plan:` lines to paid plans:
+
+| Piece | Paid plan | About |
 | --- | --- | --- |
 | App (web service) | `starter` (512 MB) | $7 / month |
 | Postgres | `basic-256mb` | $6 / month |
 | Redis (Key Value) | `starter` | $10 / month |
 | | **Total** | **about $23 / month** |
 
-Want to try it for free first? Change every `plan:` to `free`. The catches: the free app
-sleeps after 15 minutes idle (the first request takes ~1 minute), free Postgres is deleted
-after about 30 days, free Redis keeps nothing on restart. Fine for a demo, not for a
-"real" deploy.
+**Before you click Apply, read the plan next to each line on Render's page.** Render creates
+exactly what it shows there, and paid plans start billing at once.
 
 ## How to run it
 
@@ -86,7 +92,7 @@ Expected: `{"groups":["liveness","readiness"],"status":"UP"}`. Stop Terminal 1 w
 2. Click **New** -> **Blueprint**.
 3. Pick the repo `ticketmaster-lab`, branch `main`. Render finds `render.yaml`.
 4. It lists three things: `ticketmaster-app`, `ticketmaster-db`, `ticketmaster-redis`.
-   Check the plans and the monthly total, then click **Apply**.
+   Check that every line says **Free**, then click **Apply**.
 5. Wait. Postgres and Redis take ~2 minutes; the app's first Docker build ~5-8 minutes.
    Open `ticketmaster-app` -> **Logs**. Expected near the end:
    `Successfully applied 7 migrations` and `Tomcat started on port 10000`, then
