@@ -38,7 +38,13 @@ setup is code in `infra/aws/` (Terraform). Why: [ADR-0012](decisions/0012-aws-wi
 | CloudWatch Logs | Logs tab | The app's output. |
 | Terraform | `render.yaml` | The whole setup as code. |
 
-## Cost (us-west-2, rough; check the AWS pricing pages)
+## Region
+
+`us-east-2` (Ohio): close to Toronto (~15 ms), in the cheapest price tier, and not
+`us-east-1`, the busiest region. Another region: change `region` in
+`infra/aws/variables.tf` and use the same one in `aws configure`.
+
+## Cost (us-east-2, rough; check the AWS pricing pages)
 
 | Piece | Size | About / month |
 | --- | --- | --- |
@@ -71,7 +77,7 @@ brew install hashicorp/tap/terraform
 aws configure
 ```
 
-   It asks for an access key, secret key, region (`us-west-2`) and output (`json`).
+   It asks for an access key, secret key, region (`us-east-2`) and output (`json`).
    Check it worked:
 
 ```bash
@@ -102,7 +108,7 @@ Expected: `init` ends with `Terraform has been successfully initialized!`. `appl
 
 ```bash
 REPO=$(terraform -chdir=infra/aws output -raw ecr_repository_url)
-aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin ${REPO%%/*}
+aws ecr get-login-password --region $(terraform -chdir=infra/aws output -raw region) | docker login --username AWS --password-stdin ${REPO%%/*}
 docker build --platform linux/arm64 -t $REPO:latest .
 docker push $REPO:latest
 ```
@@ -122,7 +128,7 @@ minutes (RDS is the slow one). It ends with:
 ```
 Apply complete! Resources: 28 added, 0 changed, 0 destroyed.
 Outputs:
-app_url = "http://ticketmaster-....us-west-2.elb.amazonaws.com"
+app_url = "http://ticketmaster-....us-east-2.elb.amazonaws.com"
 ...
 ```
 

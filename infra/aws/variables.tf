@@ -1,7 +1,7 @@
 variable "region" {
   description = "AWS region to create everything in."
   type        = string
-  default     = "us-west-2"
+  default     = "us-east-2"
 }
 
 variable "name" {
