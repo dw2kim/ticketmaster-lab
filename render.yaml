@@ -7,13 +7,14 @@
 #   ticketmaster-redis   managed Redis ("Key Value"), reachable only from inside Render
 #
 # Elasticsearch is left out on purpose: search uses Postgres full-text (the default, step 8).
-# Plan names and prices change; check https://render.com/pricing before you apply this.
+# Free plans: $0, with limits (the app sleeps when idle, free Postgres expires after ~30 days).
+# Paid plans for always-on (~$23/month): docs/deploy.md. Check https://render.com/pricing.
 
 services:
   - type: web
     name: ticketmaster-app
     runtime: docker
-    plan: starter
+    plan: free
     region: oregon
     healthCheckPath: /actuator/health
     autoDeploy: true            # every push to the main branch deploys
@@ -33,7 +34,7 @@ services:
 
   - type: keyvalue
     name: ticketmaster-redis
-    plan: starter
+    plan: free
     region: oregon
     ipAllowList: []             # empty = no access from the internet, only from the app
     maxmemoryPolicy: noeviction # holds and the waiting room must not be dropped to save memory
@@ -42,6 +43,6 @@ databases:
   - name: ticketmaster-db
     databaseName: ticketmaster
     user: ticketmaster
-    plan: basic-256mb
+    plan: free
     region: oregon
     ipAllowList: []             # empty = no access from the internet, only from the app
